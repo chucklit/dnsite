@@ -1,0 +1,8 @@
+# raw source downloads (UN spreadsheets, world-atlas TopoJSON) -- rebuilt by data/build_db.py and tools/make_map.py
+data/raw/
+data/raw_map/
+# local test zone
+zone/smoke.test.*
+.DS_Store
+__pycache__/
+.wrangler/

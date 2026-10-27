@@ -1,0 +1,114 @@
+site: Where the Greeks went
+tagline: Thirty years of the Greek diaspora, drawn from the UN's migrant-stock counts
+theme: paper
+accent: #1d5fc2
+by: A dnsite demo
+date: October 2026
+source: UN DESA, International Migrant Stock 2020 and 2024 editions (CC BY 3.0 IGO). Counts are people born in Greece and living elsewhere at mid-year.
+
+text: Greece is a country that has always sent people abroad. The ship manifests to New York, the guest-worker trains to Stuttgart, the long flights to Melbourne, and lately the one-way tickets to London all left a trace in one place: the census counts of other countries. The United Nations gathers those counts every five years. This site is built on them.
+text: Every number below comes from the UN's *International Migrant Stock* tables. There is no server behind this page; the text, the numbers and the map are all stored in this domain's DNS records and assembled in your browser.
+
+# One million people, give or take
+
+number:
+  query: SELECT people AS value, 'Greek-born people living outside Greece in 2020 (2020 edition)' AS label FROM totals_rev2020 WHERE year=2020
+  format: ,
+
+text: The diaspora shrank through the 1990s and 2000s as the post-war generation aged, then grew again after 2010, when the debt crisis sent a new wave abroad.
+
+chart: area
+  title: Greek-born people living abroad, 1990–2020
+  query: SELECT year AS x, people AS y FROM totals_rev2020
+  format: ,
+  note: 2020 edition. The UN revised its methods in the 2024 edition, which gives lower totals for the same years (see the last section).
+
+# Where they live
+
+text: Germany, the United States and Australia have held the three biggest Greek communities for the whole period, but their fortunes diverged. The American and Australian communities are old and slowly shrinking. Germany's fell by half after 2000 and then jumped during the crisis years.
+
+chart: flowmap
+  title: Greek-born population by country of residence
+  query: SELECT iso2, dest, people AS value FROM stock_rev2020 WHERE year={year}
+  from: GR
+  slider: year
+  top: 40
+  format: ,
+  note: Drag the slider. Line width and dot size follow the number of people. Hover a dot for the count.
+
+text: Most of the lines end in Europe, where they pile on top of each other. Here is the same map, closer in.
+
+chart: flowmap
+  title: The European half, up close
+  query: SELECT iso2, dest, people AS value FROM stock_rev2020 WHERE year={year} AND region='Europe'
+  from: GR
+  slider: year
+  focus: europe
+  labels: 12
+  format: ,
+
+chart: hbars
+  title: The fifteen largest Greek communities abroad
+  query: SELECT dest AS label, people AS value FROM stock_rev2020 WHERE year={year} ORDER BY 2 DESC LIMIT 15
+  slider: year
+  format: ,
+
+chart: choropleth
+  title: Every country with a counted Greek-born population, 2020
+  query: SELECT iso2, people AS value FROM stock_rev2020 WHERE year=2020
+  format: ,
+  note: Colour is on a log scale, so small communities still show.
+
+# Three stories in one chart
+
+text: The post-war emigrants to the United States, Canada and Australia are fading from the counts, in the gentle way an ageing generation does. Germany is different: its line falls as guest workers of the 1960s retire home, then climbs steeply after 2010. The United Kingdom barely registered in 1990 and had five times as many Greek-born residents by 2020.
+
+chart: line
+  title: The six largest destinations, 1990–2020
+  query: SELECT year AS x, people AS y, dest AS series FROM stock_rev2020 WHERE iso2 IN ('DE','US','AU','TR','GB','CA')
+  format: ,
+
+chart: slope
+  title: 1990 against 2020
+  query: SELECT year AS x, people AS y, dest AS series FROM stock_rev2020 WHERE year IN (1990, 2020) AND iso2 IN ('DE','US','AU','TR','GB','CA','NL','SE','BE','CY')
+  format: k
+  note: Rising lines are communities that grew over thirty years; falling lines shrank.
+
+# Europe took most of them
+
+chart: waffle
+  title: Share of the diaspora by region of residence, 2020
+  query: SELECT region AS label, SUM(people) AS value FROM stock_rev2020 WHERE year=2020 GROUP BY region ORDER BY 2 DESC
+  format: ,
+  note: Each square is one percent of Greek-born people living abroad.
+
+chart: bars
+  title: By region, 2020
+  query: SELECT region AS label, SUM(people) AS value FROM stock_rev2020 WHERE year=2020 GROUP BY region ORDER BY 2 DESC
+  format: k
+
+# The other direction
+
+text: Greece is also a destination. The same tables count people born elsewhere who live in Greece, and that number has more than doubled since 1990. Albania dominates, followed by a long tail that shifted over the decades from the former Soviet Union to the Middle East and South Asia.
+
+number:
+  query: SELECT SUM(people) AS value, 'foreign-born residents of Greece in 2024 (top 40 origins, 2024 edition)' AS label FROM immigrants WHERE year=2024
+  format: ,
+
+chart: hbars
+  title: Where Greece's immigrants were born
+  query: SELECT origin AS label, people AS value FROM immigrants WHERE year={year} ORDER BY 2 DESC LIMIT 12
+  slider: year
+  format: ,
+
+# A note on the numbers
+
+text: The UN published a new edition of these tables in 2024 with a revised method. For the same year, 2020, the two editions disagree: the 2020 edition counts 1,088,507 Greek-born people abroad, the 2024 edition 775,995. The 2024 edition also lists only the largest origins for each country and folds the rest into "others", which is why the United Kingdom and France are missing from it. The charts above use the 2020 edition because it itemises every country pair; the table below shows the 2024 edition's own series so you can compare.
+
+chart: table
+  title: Greek-born people abroad, 2024 edition
+  query: SELECT year, people FROM totals
+  format: ,
+
+divider:
+text: Everything on this page is public data in public DNS. Run `dig TXT _dnsite.` followed by this domain to read the records yourself, and see the [source notes](https://www.un.org/development/desa/pd/content/international-migrant-stock) at the UN.

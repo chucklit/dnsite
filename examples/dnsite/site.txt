@@ -1,0 +1,50 @@
+site: DNSite
+tagline: A website that lives in its domain's DNS records. No server, no hosting, nothing to deploy.
+theme: paper
+accent: #1d5fc2
+by: An open-source experiment
+date: October 2026
+
+text: This page is not on a web server. Its text, its styling choices and the little database behind the charts below are stored as TXT records in the DNS zone of **dnsite.org**. Your browser asked DNS for them, unpacked them and drew what you see. Run `dig TXT _dnsite.dnsite.org` and you are reading the site's source.
+
+# How it works
+
+text: DNS can hold small pieces of text against a name. DNSite puts a whole site in there: a readable document written in a tiny site language, plus an optional SQLite database, compressed and split into chunks across records named `s0`, `s1`, `d0`, `d1` and so on, with a manifest at `_dnsite` that says how many.
+text: The only server involved is one shared, static **loader** page. Any domain can point at it. When you open the domain, the loader reads the domain's own records over DNS-over-HTTPS and renders them. The loader never stores anything and never sees a site until a visitor asks for it. Every DNS resolver on earth caches the records, so the whole internet is the CDN.
+text: Charts run real SQL. The database is opened in SQLite compiled to WebAssembly, in the browser, and each chart is a query against it. There are a dozen built-in chart types, an SVG world map, year sliders, and a "show table" view behind every chart.
+
+# See it work
+
+text: **[Where the Greeks went](https://greeks.dnsite.org)**: thirty years of the Greek diaspora from the UN's migrant-stock tables, with flow maps, sliders and a four-hundred-row database. The whole site is thirty TXT records, about 27 kilobytes.
+
+# What fits
+
+chart: table
+  title: What a DNSite is good for
+  query: SELECT kind AS "Site", CASE fits WHEN 1 THEN 'yes' ELSE 'no' END AS "Fits?", why AS "Because" FROM fits
+
+text: The limits are honest ones. DNS hosts cap a record near 2 to 4 kilobytes and a zone at a few hundred to a few thousand records, so a site of a few hundred kilobytes is the practical ceiling. Photos do not fit; vector art and charts do. And only the domain's owner can change its DNS, so a DNSite is read-only for visitors, which is exactly right for data stories, directories and pages that publish rather than collect.
+
+# What the loader weighs
+
+text: The loader carries the heavy parts once, and your browser caches them for every DNSite you ever visit. A site itself only carries what is unique to it.
+
+chart: hbars
+  title: Loader download on a first visit, compressed bytes
+  query: SELECT part AS label, gz AS value FROM loader ORDER BY gz DESC
+  format: k
+  note: A site without a database never loads the SQLite engine, which makes a text-only DNSite about 40 KB in total.
+
+number:
+  query: SELECT SUM(gz) AS value, 'bytes for the whole loader, cached after the first visit' AS label FROM loader
+  format: k
+
+# The possibilities
+
+text: **Sites that outlive their hosting.** Nothing expires but the domain. A data-journalism piece, a conference programme or a memorial page stays up for as long as someone renews the name, with no server to patch and no bill for hosting.
+text: **Data you can verify.** Every number on a DNSite is public in DNS. Anyone can pull the database with `dig` and check the chart against it, and with DNSSEC the records are signed.
+text: **Sites for everyone.** A free subdomain under dnsite.org takes zero setup. Your own domain needs a CNAME to the loader and a paste of the records at your registrar. An editor with a live preview that writes the records for you is the next thing to build.
+text: **One loader, any number of sites.** The loader is open source and can be run by anyone, so no single host can take a DNSite down. If this one disappears, point your domain at another.
+
+divider:
+text: Made with an unreasonable amount of enthusiasm by [Chuck Littlefield](https://dnsite.org) in Baltimore. The code is on GitHub soon; until then, `dig` is the documentation.

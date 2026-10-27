@@ -1,0 +1,59 @@
+site: Smoke test
+tagline: Every chart type, once
+theme: paper
+accent: #1f6feb
+source: made-up numbers, for testing only
+
+# Numbers
+text: A paragraph with **bold**, *italic*, `code` and [a link](https://example.com).
+number:
+  query: SELECT SUM(amount) AS value, 'total made-up sales' AS label FROM sales
+  format: ,
+
+# Bars
+chart: bars
+  title: Sales by region, 2024
+  query: SELECT region AS label, amount AS value FROM sales WHERE year=2024 ORDER BY 2 DESC
+chart: hbars
+  title: Same, horizontal
+  query: SELECT region AS label, amount AS value FROM sales WHERE year={year} ORDER BY 2 DESC
+  slider: year
+
+# Lines
+chart: line
+  title: Sales over time by region
+  query: SELECT year AS x, amount AS y, region AS series FROM sales
+chart: area
+  title: Europe only
+  query: SELECT year AS x, amount AS y FROM sales WHERE region='Europe'
+chart: slope
+  title: 2018 to 2024
+  query: SELECT year AS x, amount AS y, region AS series FROM sales WHERE year IN (2018,2024)
+chart: scatter
+  title: Scatter
+  query: SELECT year AS x, amount AS y, region AS label FROM sales
+
+# Maps
+chart: choropleth
+  title: Choropleth
+  query: SELECT iso2, amount AS value FROM sales WHERE year={year}
+  slider: year
+chart: flowmap
+  title: Flow map from Greece
+  query: SELECT iso2, amount AS value FROM sales WHERE year=2024
+  from: GR
+
+# Others
+chart: waffle
+  title: Share by region, 2024
+  query: SELECT region AS label, amount AS value FROM sales WHERE year=2024
+chart: timeline
+  title: Timeline
+  query: SELECT year AS x, region || ' peak' AS label, 'note ' || amount AS note FROM sales WHERE region='Asia'
+chart: table
+  title: Raw table
+  query: SELECT * FROM sales WHERE year=2024
+image: badge
+  alt: a badge
+divider:
+text: The end.
