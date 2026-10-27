@@ -29,13 +29,13 @@ async function resolveTXT(name) {
 }
 
 let done = 0, total = 1, txtChars = 0;
-const tick = () => { done++; $prog.style.width = Math.min(100, 100 * done / total) + "%"; };
+const tick = () => { done++; if ($prog) $prog.style.width = Math.min(100, 100 * done / total) + "%"; };
 
-async function loadBlob(prefix, n) {
+async function loadBlob(prefix, n, host = HOST) {
   if (!n) return null;
-  const chunks = await Promise.all(Array.from({ length: n }, (_, i) => resolveTXT(`${prefix}${i}.${HOST}`).then(v => { tick(); return v; })));
+  const chunks = await Promise.all(Array.from({ length: n }, (_, i) => resolveTXT(`${prefix}${i}.${host}`).then(v => { tick(); return v; })));
   const missing = chunks.findIndex(c => c == null);
-  if (missing >= 0) throw new Error(`record ${prefix}${missing}.${HOST} is missing -- the zone may be half published`);
+  if (missing >= 0) throw new Error(`record ${prefix}${missing}.${host} is missing -- the zone may be half published`);
   const b64 = chunks.join("");
   txtChars += b64.length;
   const bin = atob(b64);
@@ -90,7 +90,8 @@ function md(s) {
 }
 
 /* ---------- SQL ---------- */
-let db = null;
+let db = null, SQLMod = null;
+async function ensureSQL() { return SQLMod || (SQLMod = await initSqlJs({ locateFile: f => "vendor/" + f })); }
 function query(sql) {
   if (!db) throw new Error("this chart needs a database but the site has none");
   const res = db.exec(sql);
@@ -252,6 +253,14 @@ charts.timeline = (fig, rows) => {
 
 /* maps */
 let mapSVG = null, centroids = {};
+async function ensureMap(customText) {
+  const [mapText, cents] = await Promise.all([
+    customText || fetch("assets/world.svg").then(r => r.ok ? r.text() : null).catch(() => null),
+    fetch("assets/centroids.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
+  ]);
+  if (mapText) { try { mapSVG = cleanSVG(mapText); } catch (e) { console.warn("map:", e); } }
+  centroids = cents || {};
+}
 function mapClone(fig) {
   const svg = mapSVG.cloneNode(true); svg.classList.add("map"); svg.setAttribute("role", "img");
   for (const p of svg.querySelectorAll("#countries path")) { p.classList.add("land"); title(p, p.dataset.name || p.id); }
@@ -390,20 +399,20 @@ function cleanSVG(text) {
 }
 
 /* ---------- page ---------- */
-function render(site, manifest, stats) {
+function render(site, manifest, stats, root = $app, host = HOST) {
   const { props, blocks } = site;
-  document.documentElement.dataset.theme = props.theme || "paper";
-  if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) document.documentElement.style.setProperty("--accent", props.accent);
-  document.title = props.site || HOST;
+  (root === $app ? document.documentElement : root).dataset.theme = props.theme || "paper";
+  if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) (root === $app ? document.documentElement : root).style.setProperty("--accent", props.accent);
+  if (root === $app) document.title = props.site || host;
   if (props.lang) document.documentElement.lang = props.lang;
-  $app.replaceChildren();
+  root.replaceChildren();
   const head = document.createElement("header"); head.className = "site";
-  head.innerHTML = `<h1>${md(props.site || HOST)}</h1>${props.tagline ? `<p class="tagline">${md(props.tagline)}</p>` : ""}${props.by || props.date ? `<p class="byline">${[props.by, props.date].filter(Boolean).map(md).join(" · ")}</p>` : ""}`;
-  $app.appendChild(head);
-  let section = null; const sec = () => section || (section = $app.appendChild(document.createElement("section")));
+  head.innerHTML = `<h1>${md(props.site || host)}</h1>${props.tagline ? `<p class="tagline">${md(props.tagline)}</p>` : ""}${props.by || props.date ? `<p class="byline">${[props.by, props.date].filter(Boolean).map(md).join(" · ")}</p>` : ""}`;
+  root.appendChild(head);
+  let section = null; const sec = () => section || (section = root.appendChild(document.createElement("section")));
   for (const b of blocks) {
     let node;
-    if (b.kind === "heading") { if (b.level === 1) { section = document.createElement("section"); $app.appendChild(section); } node = document.createElement(b.level === 1 ? "h2" : "h3"); node.innerHTML = md(b.text); }
+    if (b.kind === "heading") { if (b.level === 1) { section = document.createElement("section"); root.appendChild(section); } node = document.createElement(b.level === 1 ? "h2" : "h3"); node.innerHTML = md(b.text); }
     else if (b.kind === "text") { node = document.createElement("p"); node.innerHTML = md(b.text); }
     else if (b.kind === "divider") node = document.createElement("hr");
     else if (b.kind === "image") {
@@ -415,10 +424,10 @@ function render(site, manifest, stats) {
     node.classList.add("reveal"); sec().appendChild(node);
   }
   const foot = document.createElement("footer"); foot.className = "site";
-  foot.innerHTML = `${props.source ? `<p>Source: ${md(props.source)}</p>` : ""}<p>This site is served from DNS. ${stats.records} TXT records (${(stats.chars / 1024).toFixed(1)} KB of text) unpack to ${(stats.bytes / 1024).toFixed(0)} KB, rendered in your browser${db ? " with SQLite" : ""}. Read it yourself: <code>dig TXT _dnsite.${esc(HOST)}</code></p>`;
-  $app.appendChild(foot);
+  foot.innerHTML = `${props.source ? `<p>Source: ${md(props.source)}</p>` : ""}<p>This site is served from DNS. ${stats.records} TXT records (${(stats.chars / 1024).toFixed(1)} KB of text) unpack to ${(stats.bytes / 1024).toFixed(0)} KB, rendered in your browser${db ? " with SQLite" : ""}. Read it yourself: <code>dig TXT _dnsite.${esc(host)}</code></p>`;
+  root.appendChild(foot);
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px" });
-  document.querySelectorAll(".reveal").forEach(n => io.observe(n));
+  root.querySelectorAll(".reveal").forEach(n => io.observe(n));
 }
 
 function fail(msg) {
@@ -426,7 +435,17 @@ function fail(msg) {
   $status.innerHTML = `<p><b>Couldn't load a site for <code>${esc(HOST)}</code>.</b></p><p>${esc(msg)}</p><p>A dnsite needs a manifest record:</p><code>dig TXT _dnsite.${esc(HOST)}</code>`;
 }
 
-(async () => {
+/* the same code powers the builder page (make.html): it sets data-noboot and drives this API */
+window.DNSite = {
+  parseSite, render, cleanSVG, resolveTXT, loadBlob, parseManifest, ensureMap,
+  chartTypes: () => Object.keys(charts),
+  async setDatabase(bytes) { const SQL = await ensureSQL(); if (db) db.close(); db = bytes ? new SQL.Database(bytes) : null; return db; },
+  async newDatabase() { const SQL = await ensureSQL(); return new SQL.Database(); },
+  getDatabase: () => db,
+  useDatabase(d) { if (db && db !== d) db.close(); db = d; },
+  query,
+};
+if (!document.body.dataset.noboot) (async () => {
   try {
     const manifestTxt = await resolveTXT(`_dnsite.${HOST}`);
     if (!manifestTxt) return fail("No _dnsite TXT record was found at this name.");
@@ -434,21 +453,14 @@ function fail(msg) {
     total = man.site + man.db + man.map + 1; tick();
     const [siteBytes, dbBytes, mapBytes, SQL] = await Promise.all([
       loadBlob("s", man.site), loadBlob("d", man.db), loadBlob("m", man.map),
-      man.db ? initSqlJs({ locateFile: f => "vendor/" + f }) : null,
+      man.db ? ensureSQL() : null,
     ]);
     if (!siteBytes) return fail("The manifest lists no site document.");
     const site = parseSite(new TextDecoder().decode(siteBytes));
     if (dbBytes) db = new SQL.Database(dbBytes);
     // the built-in world map is only fetched when a chart needs it, so text-only sites stay tiny
     const needsMap = mapBytes || site.blocks.some(b => b.kind === "chart" && /^(choropleth|flowmap)$/.test(b.type));
-    if (needsMap) {
-      const [mapText, cents] = await Promise.all([
-        mapBytes ? new TextDecoder().decode(mapBytes) : fetch("assets/world.svg").then(r => r.ok ? r.text() : null).catch(() => null),
-        fetch("assets/centroids.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      ]);
-      if (mapText) { try { mapSVG = cleanSVG(mapText); } catch (e) { console.warn("map:", e); } }
-      centroids = cents || {};
-    }
+    if (needsMap) await ensureMap(mapBytes ? new TextDecoder().decode(mapBytes) : null);
     const bytes = (siteBytes?.length || 0) + (dbBytes?.length || 0) + (mapBytes?.length || 0);
     render(site, man, { records: total, bytes, chars: txtChars });
   } catch (e) { console.error(e); fail(e.message); }

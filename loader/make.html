@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Make a DNSite</title>
+<meta name="description" content="Write a site, add data, preview it live, and get the DNS records that are the site.">
+<link rel="stylesheet" href="site.css">
+<style>
+/* builder chrome: sans, compact, sits around the live preview which uses the site styles */
+html,body{height:100%}
+body{font:14px/1.5 var(--sans);background:var(--bg);color:var(--ink);overflow:hidden}
+.mk{display:grid;grid-template-rows:auto 1fr;height:100%}
+.mk-top{display:flex;align-items:center;gap:1rem;padding:.6rem 1rem;border-bottom:1px solid var(--rule);background:var(--card)}
+.mk-top h1{font:700 16px/1 var(--sans);margin:0;letter-spacing:-.01em}
+.mk-top h1 a{color:inherit;text-decoration:none}
+.mk-top h1 span{color:var(--muted);font-weight:400}
+.mk-top .spacer{flex:1}
+.mk-top .state{color:var(--muted);font-size:12px}
+.mk-body{display:grid;grid-template-columns:minmax(360px,46%) 1fr;min-height:0}
+.mk-left{display:grid;grid-template-rows:auto 1fr;min-height:0;border-right:1px solid var(--rule)}
+.tabs{display:flex;gap:.25rem;padding:.5rem .75rem 0;border-bottom:1px solid var(--rule);background:var(--card)}
+.tabs button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:.5rem .75rem;cursor:pointer;min-height:40px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.pane{display:none;min-height:0;overflow:auto;padding:.75rem}
+.pane.on{display:flex;flex-direction:column;gap:.75rem}
+.toolbar{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.btn,button.btn,select.btn,label.btn{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.4rem .7rem;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:.35rem}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.small{min-height:30px;padding:.2rem .55rem;font-size:13px}
+textarea,input[type=text]{font:13px/1.45 var(--mono);color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.6rem;width:100%;box-sizing:border-box}
+textarea{flex:1;min-height:14rem;resize:vertical;tab-size:2}
+input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-weight:600;font-size:13px}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.hint code,.hint kbd{font-family:var(--mono);background:var(--bg);border:1px solid var(--rule);border-radius:4px;padding:0 .3em}
+.tables{display:flex;flex-direction:column;gap:.4rem}
+.tbl-card{border:1px solid var(--rule);border-radius:8px;padding:.5rem .7rem;background:var(--card)}
+.tbl-card b{font-family:var(--mono)}
+.tbl-card .cols{color:var(--muted);font-size:12.5px;word-break:break-word}
+.tbl-card .row{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.result{overflow:auto;max-height:16rem;border:1px solid var(--rule);border-radius:8px;background:var(--card)}
+.result table{border-collapse:collapse;width:100%;font-size:12.5px}
+.result th,.result td{text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule);white-space:nowrap}
+.result td.num{text-align:right;font-variant-numeric:tabular-nums}
+.records{font:12px/1.4 var(--mono);white-space:pre;overflow:auto;max-height:18rem;border:1px solid var(--rule);border-radius:8px;padding:.6rem;background:var(--card)}
+.stat{display:flex;gap:1.5rem;flex-wrap:wrap}
+.stat div{display:flex;flex-direction:column}
+.stat b{font-size:20px;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:12px}
+.msg{padding:.5rem .7rem;border-radius:8px;background:var(--card);border:1px solid var(--rule);font-size:13px}
+.msg.ok{border-color:#2b8a3e;color:#2b8a3e}
+.msg.bad{border-color:#d9480f;color:#d9480f}
+.mk-right{min-height:0;overflow:auto;background:var(--bg)}
+#preview{min-height:100%}
+.drop{border:2px dashed var(--rule);border-radius:10px;padding:1rem;text-align:center;color:var(--muted)}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+@media (max-width:860px){
+  body{overflow:auto}
+  .mk{height:auto}
+  .mk-body{grid-template-columns:1fr}
+  .mk-left{border-right:0;border-bottom:1px solid var(--rule)}
+  .mk-right{min-height:60vh}
+  textarea{min-height:12rem}
+}
+</style>
+</head>
+<body data-noboot="1">
+<div class="mk">
+  <div class="mk-top">
+    <h1><a href="/">DNSite</a> <span>/ make</span></h1>
+    <span class="state" id="state"></span>
+    <span class="spacer"></span>
+    <button class="btn small" id="loadBtn" type="button">Open an existing DNSite…</button>
+  </div>
+  <div class="mk-body">
+    <div class="mk-left">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="write" type="button">Write</button>
+        <button role="tab" aria-selected="false" data-tab="data" type="button">Data</button>
+        <button role="tab" aria-selected="false" data-tab="publish" type="button">Publish</button>
+      </div>
+
+      <section class="pane on" id="pane-write">
+        <div class="toolbar" id="snippets">
+          <button class="btn small" type="button" data-snip="heading"># Heading</button>
+          <button class="btn small" type="button" data-snip="text">Text</button>
+          <select class="btn small" id="chartPick" aria-label="Insert a chart"><option value="">Chart…</option></select>
+          <button class="btn small" type="button" data-snip="number">Big number</button>
+          <button class="btn small" type="button" data-snip="divider">Divider</button>
+          <span class="spacer"></span>
+          <button class="btn small" type="button" id="exampleBtn">Load an example</button>
+        </div>
+        <textarea id="src" spellcheck="false" aria-label="Site document"></textarea>
+        <p class="hint">The text is the site. <code>key: value</code> lines at the top are settings; <code># Heading</code> starts a section; <code>chart: bars</code> plus indented options draws a chart from a SQL query against your data. The preview updates as you type.</p>
+      </section>
+
+      <section class="pane" id="pane-data">
+        <div class="drop" id="drop">Drop CSV files here, or <label class="btn small" style="display:inline-flex">choose files<input type="file" id="csv" accept=".csv,.tsv,text/csv" multiple hidden></label>. Each file becomes a table named after it.</div>
+        <div class="tables" id="tables"></div>
+        <div class="field">
+          <label for="sql">Try a query</label>
+          <textarea id="sql" rows="3" style="min-height:4.5rem;flex:0" placeholder="SELECT * FROM mytable LIMIT 20"></textarea>
+          <div class="toolbar"><button class="btn small" id="runSql" type="button">Run</button><span class="hint" id="sqlMsg"></span></div>
+        </div>
+        <div class="result" id="sqlOut" hidden></div>
+        <p class="hint">Charts read columns by name: <code>label</code>/<code>value</code> for bars and waffles, <code>x</code>/<code>y</code>(/<code>series</code>) for lines, <code>iso2</code>/<code>value</code> for maps. Use <code>AS</code> in the query to rename.</p>
+      </section>
+
+      <section class="pane" id="pane-publish">
+        <div class="field">
+          <label for="host">Domain the site will live at</label>
+          <input type="text" id="host" placeholder="example.com  or  yourname.example.com" autocapitalize="off" autocorrect="off">
+        </div>
+        <div class="stat" id="pubStat"></div>
+        <div class="toolbar">
+          <button class="btn primary" id="zoneBtn" type="button">Download zone file</button>
+          <button class="btn" id="copyBtn" type="button">Copy records</button>
+          <button class="btn" id="checkBtn" type="button">Check the domain</button>
+        </div>
+        <div class="msg" id="pubMsg" hidden></div>
+        <div class="records" id="records"></div>
+        <p class="hint">Import the zone file at your DNS host (or paste the records), then point the domain at a loader with a CNAME to <code>dnsite.pages.dev</code> (or an A record for a bare domain). <b>Check the domain</b> asks public DNS whether every record has landed.</p>
+      </section>
+    </div>
+    <div class="mk-right"><main id="preview" class="dnsite-root" data-theme="paper"></main></div>
+  </div>
+</div>
+<script src="vendor/sql-wasm.js"></script>
+<script src="app.js"></script>
+<script src="make.js"></script>
+</body>
+</html>

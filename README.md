@@ -10,7 +10,8 @@ renders the site in the visitor's browser. No hosting per site, nothing to deplo
 
 ```
 publish.py          site.txt (+db, +svg) -> zone/<host>.zone + zone/<host>.json
-loader/             the universal loader: index.html, app.js, vendor/sql.js, assets/world.svg
+loader/             the universal loader (index.html, app.js, site.css, vendor/sql.js, assets/world.svg)
+                    and the builder (make.html, make.js): write, add CSVs, preview, get the records
 dev/mock_doh.py     local DNS-over-HTTPS stand-in + static server for the loader
 tools/make_map.py   rebuilds loader/assets/world.svg + centroids.json from world-atlas
 data/               datasets and the scripts that build the demo databases
@@ -25,6 +26,12 @@ python3 publish.py examples/smoke/site.txt --host smoke.test --db examples/smoke
 python3 dev/mock_doh.py --port 8787
 # open http://localhost:8787/?host=smoke.test
 ```
+
+## Make one in the browser
+
+Open `/make.html` on any loader (https://dnsite.org/make.html): write the site, drop CSV
+files on the Data tab, watch the preview, then download the zone file from Publish. It can
+also open an existing DNSite from DNS for editing.
 
 ## Publish for real
 
