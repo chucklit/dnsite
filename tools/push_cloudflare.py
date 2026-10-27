@@ -51,8 +51,18 @@ def main():
     a = ap.parse_args()
 
     token = os.environ.get("CF_API_TOKEN")
+    if not token and sys.stdin.isatty():
+        import getpass
+        token = getpass.getpass("Cloudflare API token (DNS Read+Edit on the zone, not echoed): ").strip()
     if not token:
         sys.exit("set CF_API_TOKEN in the environment first (Zone:DNS:Edit on the zone)")
+    token = token.strip().strip("\"'")
+    bad = [c for c in token if not re.match(r"[A-Za-z0-9_.-]", c)]
+    if bad or not 30 <= len(token) <= 120:
+        sys.exit(f"that doesn't look like a Cloudflare API token: {len(token)} characters"
+                 + (f", with {bad!r} in it" if bad else "") + "\nA token is letters/digits/_/-, usually 40 of them. "
+                 "Cloudflare shows it only once, when created; if it was copied from a shortened display (with …), "
+                 "roll the token in the dashboard to get a fresh full one.")
 
     for path in a.json:
         pub = json.load(open(path))
