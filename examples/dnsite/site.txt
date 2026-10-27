@@ -47,4 +47,4 @@ text: **Sites for everyone.** A free subdomain under dnsite.org takes zero setup
 text: **One loader, any number of sites.** The loader is open source and can be run by anyone, so no single host can take a DNSite down. If this one disappears, point your domain at another.
 
 divider:
-text: Made with an unreasonable amount of enthusiasm by [Chuck Littlefield](https://dnsite.org) in Baltimore. The code is on GitHub soon; until then, `dig` is the documentation.
+text: Made with an unreasonable amount of enthusiasm by Chuck Littlefield in Baltimore. The loader, the publisher and both of these sites are open source at [github.com/chucklit/dnsite](https://github.com/chucklit/dnsite), MIT licensed.
