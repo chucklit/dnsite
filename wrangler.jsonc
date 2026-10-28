@@ -1,0 +1,11 @@
+// DNSite loader as a Cloudflare Worker. "Deploy to Cloudflare" reads this file:
+//   https://deploy.workers.cloudflare.com/?url=https://github.com/chucklit/dnsite
+// After deploying, attach your domain: Workers & Pages -> dnsite-loader -> Settings -> Domains & Routes.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dnsite-loader",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./loader", "binding": "ASSETS", "not_found_handling": "none" },
+  "observability": { "enabled": false }
+}

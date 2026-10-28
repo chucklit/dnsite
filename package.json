@@ -1,0 +1,11 @@
+{
+  "name": "dnsite",
+  "version": "0.1.0",
+  "description": "A website that lives in its domain's DNS records. The loader, as a Cloudflare Worker with static assets.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  }
+}

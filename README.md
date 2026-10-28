@@ -34,6 +34,15 @@ files on the Data tab, watch the preview, then publish: straight to Cloudflare f
 (through a same-origin pass-through that stores nothing), or download the zone file. It can also
 open an existing DNSite from DNS for editing.
 
+## Run the loader on your own domain (one click)
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/chucklit/dnsite)
+
+That installs the loader as a Worker in *your* Cloudflare account from this repo. Attach your domain
+under the Worker's **Domains & Routes**, publish your records (the builder at `/make` on your new
+loader, or `publish.py`), and your site runs with no dependence on dnsite.org. The Worker is
+`worker.js` + `wrangler.jsonc`; `wrangler deploy` does the same from a checkout.
+
 ## Publish for real
 
 1. Run `publish.py` with `--host yourdomain.com` and paste the lines of

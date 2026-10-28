@@ -6,3 +6,5 @@ zone/smoke.test.*
 .DS_Store
 __pycache__/
 .wrangler/
+node_modules/
+.wrangler/
