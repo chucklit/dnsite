@@ -428,8 +428,8 @@ async function publishToCloudflare(token, log) {
   for (const [name, cur] of existing) if (stale.test(name) && !wanted.has(name)) { await cfCall(token, "DELETE", `zones/${zid}/dns_records/${cur.id}`); deleted++; log(`removed ${name} (no longer used)`); }
   return `${created} created, ${updated} updated, ${same} unchanged, ${deleted} removed`;
 }
-$("cfBtn").onclick = () => { $("cfPanel").hidden = false; try { const t = localStorage.getItem("dnsite.make.cftoken"); if (t) { $("cfToken").value = t; $("cfRemember").checked = true; } } catch (e) {} $("cfToken").focus(); };
-$("cfCancel").onclick = () => { $("cfPanel").hidden = true; };
+$("cfBtn").onclick = () => { $("cfPanel").hidden = false; $("cfBtn").hidden = true; try { const t = localStorage.getItem("dnsite.make.cftoken"); if (t) { $("cfToken").value = t; $("cfRemember").checked = true; } } catch (e) {} $("cfToken").focus(); };
+$("cfCancel").onclick = () => { $("cfPanel").hidden = true; $("cfBtn").hidden = false; };
 $("cfGo").onclick = async () => {
   const token = $("cfToken").value.trim(), logEl = $("cfLog"); logEl.hidden = false; logEl.textContent = "";
   const log = m => { logEl.textContent += m + "\n"; logEl.scrollTop = logEl.scrollHeight; };

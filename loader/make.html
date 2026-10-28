@@ -177,7 +177,7 @@ details.settings .body{display:flex;flex-direction:column;gap:.5rem;padding:.4re
           <p class="hint">Works when the domain's DNS is on Cloudflare. Make a token at <b>My Profile → API Tokens → Create Token → "Edit zone DNS"</b> with <b>Zone Resources: Include → Specific zone → your domain</b>. The token is used from this browser through a <a href="https://github.com/chucklit/dnsite/blob/main/loader/functions/api/cf/%5B%5Bpath%5D%5D.js" rel="noopener">pass-through on dnsite.org</a> that stores nothing.</p>
           <div class="field"><label for="cfToken">API token</label><input type="password" id="cfToken" autocomplete="off" placeholder="paste the token"></div>
           <label class="hint" style="display:flex;gap:.4rem;align-items:center"><input type="checkbox" id="cfRemember"> remember it in this browser</label>
-          <div class="toolbar"><button class="btn primary" id="cfGo" type="button">Publish now</button><button class="btn" id="cfCancel" type="button">Cancel</button></div>
+          <div class="toolbar"><button class="btn primary" id="cfGo" type="button">Write the records to Cloudflare</button><button class="btn" id="cfCancel" type="button">Close</button></div>
           <div class="records" id="cfLog" hidden style="max-height:12rem"></div>
         </div>
         <div class="msg" id="pubMsg" hidden></div>
