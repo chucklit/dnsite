@@ -1,0 +1,1 @@
+{"loader":"dnsite","format":1,"spec":"https://dnsite.org/llms-full.txt","source":"https://github.com/chucklit/dnsite","themes":["paper","ink","slate","journal","newsroom","fieldnotes"],"publish":{"cloudflare":"/api/cf/"}}

@@ -1,0 +1,7 @@
+# DNSite loader. Sites are stored in their own domain's DNS TXT records and rendered here.
+User-agent: *
+Allow: /
+
+# For language models and tools: the site language and record format
+# https://dnsite.org/llms.txt       (short)
+# https://dnsite.org/llms-full.txt  (the full spec)

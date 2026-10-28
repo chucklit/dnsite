@@ -44,6 +44,12 @@ open an existing DNSite from DNS for editing.
 
 Anyone can check what the site is made of: `dig TXT _dnsite.yourdomain.com`.
 
+## For tools and language models
+
+`loader/llms.txt` (short) and `loader/llms-full.txt` (the spec) are served at dnsite.org for anything that
+wants to write a DNSite; `loader/.well-known/dnsite` advertises the format version. `THEMES.md` covers
+writing themes and running your own loader.
+
 ## Prior art
 
 [triweb.dev](https://news.ycombinator.com/item?id=39502097) (2024) stores small text pages in TXT records and reads them over DNS-over-HTTPS; DNSite adds the database, the charts and maps, equations and references, images, themes, the site language and the builder.

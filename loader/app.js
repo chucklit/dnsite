@@ -53,7 +53,7 @@ async function loadBlob(prefix, n, host = HOST) {
 
 function parseManifest(s) {
   const m = {}; for (const kv of s.trim().split(/\s+/)) { const [k, v] = kv.split("="); m[k] = v; }
-  if (m.v !== "1") throw new Error(`unknown dnsite format version "${m.v}"`);
+  if (m.v !== "1") throw new Error(`this site uses DNSite format v${m.v}; this loader understands v1. Try a newer loader.`);
   return { site: +m.site || 0, db: +m.db || 0, map: +m.map || 0, sha: m.sha || "" };
 }
 
@@ -611,6 +611,7 @@ function renderImage(b) {
 }
 
 /* ---------- page ---------- */
+const THEMES = ["paper", "ink", "slate", "journal", "newsroom", "fieldnotes"];
 function postMeta(b) { const d = b.opts.date ? new Date(b.opts.date + (/\d{4}-\d{2}-\d{2}$/.test(b.opts.date) ? "T12:00:00" : "")) : null; return { title: b.type || "Untitled", date: b.opts.date || "", nice: d && !isNaN(d) ? d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : b.opts.date || "", id: slug((b.opts.date ? b.opts.date + "-" : "") + (b.type || "post")) };
 }
 function renderBlock(b, ctx) {
@@ -636,6 +637,7 @@ function renderBlock(b, ctx) {
     return ol;
   }
   if (b.kind === "footnotes") { const ol = document.createElement("ol"); ol.className = "footnotes"; ol.dataset.footnotes = "1"; return ol; }
+  if (!["chart", "number", "quote", "posts"].includes(b.kind)) { const n = document.createElement("p"); n.className = "note"; n.textContent = `(a "${b.kind}" block, which this loader doesn't know)`; return n; }
   if (b.kind === "quote") { const q = document.createElement("blockquote"); q.className = "pull"; q.innerHTML = `<p>${md(b.type || "")}</p>${b.opts.by ? `<cite>${md(b.opts.by)}</cite>` : ""}`; return q; }
   if (b.kind === "posts") {
     const posts = ctx.posts, ul = document.createElement("ol"); ul.className = "posts";
@@ -648,7 +650,8 @@ function renderBlock(b, ctx) {
 function render(site, manifest, stats, root = $app, host = HOST) {
   if (siteUsesMath(site) && !window.temml) { ensureMath().then(() => render(site, manifest, stats, root, host)); }
   const { props, blocks } = site, top = root === $app ? document.documentElement : root;
-  top.dataset.theme = props.theme || "paper";
+  // a theme this loader doesn't ship falls back to paper, so a site still reads when it moves between loaders
+  top.dataset.theme = THEMES.includes(props.theme) ? props.theme : "paper";
   if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) top.style.setProperty("--accent", props.accent);
   if (root === $app) document.title = props.site || host;
   if (props.lang) top.lang = props.lang;
@@ -703,6 +706,7 @@ function fail(msg) {
 window.DNSite = {
   parseSite, serializeSite, render, renderBlock, cleanSVG, resolveTXT, loadBlob, parseManifest, ensureMap, embedFor, sha256hex,
   blockKinds: () => ["heading", "text", "post", "posts", ...OPT_BLOCKS.filter(k => k !== "post"), "references", "footnotes", "divider"],
+  themes: () => THEMES.slice(), formatVersion: 1,
   ensureMath, siteUsesMath,
   chartTypes: () => Object.keys(charts),
   async setDatabase(bytes) { const SQL = await ensureSQL(); if (db) db.close(); db = bytes ? new SQL.Database(bytes) : null; return db; },

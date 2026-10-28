@@ -1,0 +1,86 @@
+# DNSite
+
+> A website stored entirely in its domain's DNS TXT records: text, an optional SQLite database and
+> vector images, compressed and chunked into records. One shared static loader page reads them back
+> over DNS-over-HTTPS and renders the site in the visitor's browser. No server holds the site.
+
+Live: https://dnsite.org (explainer) · https://greeks.dnsite.org (data story) · https://pumpkins.dnsite.org (blog) · https://paper.dnsite.org (research note)
+Builder: https://dnsite.org/make · Full spec: https://dnsite.org/llms-full.txt · Code (MIT): https://github.com/chucklit/dnsite
+
+## How a site is stored (format v1)
+
+For host H: `_dnsite.H` TXT = manifest `v=1 site=<n> db=<m> map=<k> sha=<8 hex>`; then `s0.H…s{n-1}.H`
+(site document), `d0.H…` (SQLite file), `m0.H…` (custom SVG map). Each blob = gzip → base64 → chunks of
+≤1000 chars (2000 on Cloudflare), one TXT record each, strings ≤255 chars concatenated. H itself points
+at a loader (CNAME dnsite.pages.dev, or an A record for a bare domain). Decode: `atob` + `DecompressionStream("gzip")`.
+
+## The site language (what goes in the site document)
+
+Plain text, line based. `key: value` lines at the top are settings; everything after the first block is content.
+
+    site: Title
+    tagline: One line under the title
+    theme: paper            # paper | ink | slate | journal | newsroom | fieldnotes
+    accent: #1d5fc2
+    by: Author              date: October 2026          source: credit line in the footer
+
+    # A heading starts a section (## and ### are smaller)
+    text: A paragraph. **bold**, *italic*, `code`, [link](https://…), $inline\ math$, [^a footnote], [@citekey], [@figlabel]
+    post: Title of a blog post         # its own section with an anchor; an index of posts is built automatically
+      date: 2026-10-27
+    posts:                             # place the post index here (optional)
+    quote: Something worth repeating
+      by: who said it
+    divider:
+    image: https://host/pic.webp       # or the name of a stored asset (assets table)
+      alt: what it shows   caption: …   credit: …   width: 60%   align: center|full|left|right   sha256: …   figure: f1
+    embed: https://www.youtube.com/watch?v=…   # YouTube, Vimeo, Apple Music, Spotify, SoundCloud, Bandcamp (EmbeddedPlayer URL), CodePen
+      caption: …   ratio: wide|square|tall|music|track
+    math: \frac{a}{b}                  # LaTeX, rendered to MathML
+      label: 1
+    abstract: …                        keywords: …
+    authors: A. Name (Affiliation); B. Name (Affiliation)
+      doi: 10.…   contact: …
+    ref: smith2020                     # cite as [@smith2020]; list with references:
+      text: Smith, J. (2020). Title. Journal.   url: …   doi: …
+    references:
+    footnotes:                         # where [^notes] are listed (else before the footer)
+    number:                            # a big number
+      query: SELECT COUNT(*) AS value, 'label text' AS label FROM t
+      format: ,
+    chart: bars                        # see chart types below
+      title: …   query: SELECT … FROM …   format: , | k | % | 0.0   note: …   figure: f2
+      slider: year                     # {year} in the query is replaced by the slider value
+
+Chart types and the column names their query must return:
+bars, hbars, waffle: `label, value` (bars also `err` or `lo`/`hi` for error bars) · line, area: `x, y[, series]` (line also err/lo/hi; `annotate: x=2010 | Label; x=2015 | Label`; `ymin`/`ymax`) · scatter: `x, y[, label]` (`fit: linear`) · slope: `x, y, series` · timeline: `x, label[, note]` · table: any columns · histogram: `value` (`bins`) · boxplot: `label, value` · heatmap: `x, y, value` · choropleth: `iso2, value` · flowmap: `iso2, value[, dest]` with `from: GR`, `focus: europe|americas|ISO2 list`, `labels`, `top`. `yscale: log` on bars, line, area, scatter, boxplot. Every chart gets Show table and CSV buttons.
+Numbered figures: `figure: name` on a chart/image → "Figure n." (tables "Table n."); `[@name]` in text links to it.
+
+## The database
+
+A SQLite file. Any tables you like; charts query them with ordinary SQL (SQLite dialect, read-only).
+Stored images: table `assets(name TEXT PRIMARY KEY, type TEXT, data BLOB)` with SVG (sanitised on render)
+or WebP/PNG/JPEG bytes; reference by name in `image:`.
+
+## Making and publishing one
+
+Builder (browser): https://dnsite.org/make — blocks, CSV → tables, images, live preview, then Publish:
+"Publish to Cloudflare" (token used in the browser via a same-origin pass-through at /api/cf/ that stores
+nothing) or download a BIND zone file. "Check the domain" verifies the records in public DNS.
+Command line: `python3 publish.py site.txt --host H --db site.db --out zone` writes zone/H.zone and
+zone/H.json; `tools/push_cloudflare.py zone/H.json` pushes them (token from CF_API_TOKEN or a prompt).
+Budget: ~3 records per 1,000 words; a logo SVG ~3; a 15 KB WebP ~20. Cloudflare's free plan allows 1,000
+records per zone. Photos belong on an external host, referenced by URL (optionally with sha256).
+
+## Limits and principles
+
+Read-only for visitors (only the domain owner can change DNS). No site-side JavaScript, ever: all
+behaviour comes from the loader's built-in blocks. Embeds come from a fixed allowlist. A `key:` line the
+language doesn't know renders as plain text (so prose like "Note: …" is safe); an unknown theme falls back to paper; a newer format version is refused with a message.
+Anyone may run their own loader (fork the repo, add themes in site.css) and point domains at it.
+
+## Worked examples (site documents + the scripts that build their databases)
+
+https://github.com/chucklit/dnsite/tree/main/examples — `pumpkins/` (blog, every block type),
+`paper/` (research note: math, references, numbered figures), `greece/` (data story: maps, sliders),
+`explainer/` (the dnsite.org page).
