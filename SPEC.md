@@ -40,7 +40,7 @@ Plain text, UTF-8, readable from `dig`. Line based.
 ```
 site: Where the Greeks went
 tagline: Seventy years of leaving home
-theme: paper            # paper | ink | slate
+theme: paper            # paper | ink | slate | journal (papers) | newsroom (journalism) | fieldnotes (kraft + Futura)
 accent: #1f6feb
 source: UN DESA, International Migrant Stock 2024
 
@@ -73,7 +73,17 @@ chart: flowmap
 | image | `image: <asset name>` or `image: https://…` | `alt`, `caption`, `width` (`320px`, `60%`), `align` (`center` `full` `left` `right`), `sha256` (URL images: the loader refuses a file that no longer matches) |
 | embed | `embed: <url>` | YouTube, Vimeo, Apple Music, Spotify, SoundCloud, Bandcamp (its `EmbeddedPlayer` URL from Share / Embed), CodePen; fixed allowlist, rendered as an iframe; `caption`, `ratio` (`wide` `square` `tall` `music` `track`; music players pick their height automatically) |
 | quote | `quote: text` | `by` |
+| math | `math: <LaTeX>` | `label` (equation number). Inline math in any text as `$…$`. Rendered to MathML with Temml, loaded only by sites that use it |
+| abstract | `abstract: text` | `keywords` |
+| authors | `authors: Name (Affiliation); Name (Affiliation)` | `doi`, `contact`; affiliations are numbered |
+| ref | `ref: key` | `text`, `url`, `doi`. Cite in text as `[@key]`; numbered in order of first citation |
+| references | `references:` | the numbered list of `ref` blocks |
+| footnotes | `footnotes:` | lists the `[^footnote text]` notes from the text; without it they go before the footer |
 | divider | `divider:` | |
+
+Numbered figures: any chart, image or embed with `figure: label` gets "Figure n." (a `table` chart gets
+"Table n.") in its caption and an anchor `#fig-label`; `[@label]` in text becomes a link reading "Figure n".
+Images also take `credit:`. Every chart has "Show table" and "CSV" buttons.
 
 Stored images live in the database table `assets(name TEXT PRIMARY KEY, type TEXT, data BLOB)`:
 SVG (sanitised on render) or WebP/PNG/JPEG bytes. The older `svg(name, body)` table still works.
@@ -92,7 +102,10 @@ Rules:
 ### Built-in chart types (v1)
 
 `bars`, `hbars`, `line`, `area`, `scatter`, `bignumber`, `table`, `choropleth`,
-`flowmap`, `slope`, `waffle`, `timeline`. Each takes `title`, `query`, `note`,
+`flowmap`, `slope`, `waffle`, `timeline`, `histogram` (`value`, `bins`), `boxplot` (`label` group,
+`value`), `heatmap` (`x`, `y`, `value`). Error bars: columns `err` (±) or `lo`/`hi` on bars, line and
+scatter (line draws a band). `yscale: log` on bars, line, area, scatter, boxplot. `fit: linear` on
+scatter adds a least-squares line with r². `annotate: x=2010 | Label; x=2015 | Label` on line and area. Each takes `title`, `query`, `note`,
 and type-specific options (`x`, `y`, `series`, `format`, `from`, `slider`, `color`).
 Column conventions: `label`/`value` for one-dimensional charts, `x`/`y`(+`series`)
 for time series, `iso2`/`value` for maps. Every chart gets a "Show table" toggle.

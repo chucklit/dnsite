@@ -54,8 +54,8 @@ function parseManifest(s) {
 
 /* ---------- site language ---------- */
 /* block kinds: the ones with options take indented `key: value` lines after them */
-const OPT_BLOCKS = ["chart", "number", "image", "embed", "quote", "post"];
-const PLAIN_BLOCKS = ["text", "divider", "posts"];
+const OPT_BLOCKS = ["chart", "number", "image", "embed", "quote", "post", "math", "ref", "abstract", "authors"];
+const PLAIN_BLOCKS = ["text", "divider", "posts", "references", "footnotes"];
 function parseSite(text) {
   const props = {}, blocks = [];
   let cur = null, inHead = true;
@@ -75,7 +75,7 @@ function parseSite(text) {
     if (inHead && !OPT_BLOCKS.includes(key) && !PLAIN_BLOCKS.includes(key)) { props[key] = val; continue; }
     inHead = false;
     if (OPT_BLOCKS.includes(key)) { cur = { kind: key, type: val, opts: {} }; blocks.push(cur); }
-    else if (key === "divider" || key === "posts") blocks.push({ kind: key });
+    else if (key === "divider" || key === "posts" || key === "references" || key === "footnotes") blocks.push({ kind: key });
     else if (key === "text") blocks.push({ kind: "text", text: val });
     else blocks.push({ kind: "text", text: line });
   }
@@ -88,7 +88,7 @@ function serializeSite({ props, blocks }) {
   for (const b of blocks) {
     if (b.kind === "heading") out.push("", "#".repeat(b.level) + " " + b.text);
     else if (b.kind === "text") out.push("text: " + b.text);
-    else if (b.kind === "divider" || b.kind === "posts") out.push(b.kind + ":");
+    else if (["divider", "posts", "references", "footnotes"].includes(b.kind)) out.push(b.kind + ":");
     else {
       if (b.kind === "post") out.push("");
       out.push(`${b.kind}: ${b.type ?? ""}`.replace(/\s+$/, ""));
@@ -101,12 +101,31 @@ const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^
 
 /* ---------- markdown-lite (whitelist, never raw HTML) ---------- */
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let ctx = { refs: {}, figs: {}, notes: [] };   // numbering for the page being rendered; set by render()
+function mathHTML(tex, display) {
+  if (window.temml) { try { return temml.renderToString(tex, { displayMode: !!display, throwOnError: false }); } catch (e) {} }
+  return `<code class="math">${esc(tex)}</code>`;
+}
 function md(s) {
+  // inline math first, on the raw text, so nothing inside $…$ is treated as markup
+  const maths = []; s = String(s).replace(/\$([^$\n]+?)\$/g, (_, t) => { maths.push(t); return `\u0000${maths.length - 1}\u0000`; });
+  s = s.replace(/\[\^([^\]]+)\]/g, (_, t) => { ctx.notes.push(t); return `\u0001${ctx.notes.length}\u0001`; });
   let h = esc(s);
+  h = h.replace(/\u0001(\d+)\u0001/g, (_, n) => `<sup class="fn"><a href="#fn-${n}" id="fnref-${n}">${n}</a></sup>`);
+  h = h.replace(/\[@([\w:.-]+)\]/g, (_, k) => ctx.refs[k] ? `<a class="cite" href="#ref-${esc(k)}">[${ctx.refs[k]}]</a>` : ctx.figs[k] ? `<a class="figref" href="#fig-${esc(k)}">${ctx.figs[k]}</a>` : `[@${esc(k)}]`);
   h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, t, u) => `<a href="${u}" rel="noopener">${t}</a>`);
   h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
   h = h.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>");
-  return h;
+  return h.replace(/\u0000(\d+)\u0000/g, (_, i) => mathHTML(maths[+i], false));
+}
+const siteUsesMath = site => site.blocks.some(b => b.kind === "math" || (b.kind === "text" && /\$[^$\n]+\$/.test(b.text)) || (b.kind === "abstract" && /\$[^$\n]+\$/.test(b.type || "")));
+let mathLoading = null;
+function ensureMath() {
+  if (window.temml) return Promise.resolve();
+  return mathLoading || (mathLoading = new Promise(res => {
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "vendor/temml.css"; document.head.appendChild(l);
+    const sc = document.createElement("script"); sc.src = "vendor/temml.min.js"; sc.onload = res; sc.onerror = res; document.head.appendChild(sc);
+  }));
 }
 
 /* ---------- SQL ---------- */
@@ -155,20 +174,38 @@ const accentRGB = () => getComputedStyle(document.documentElement).getPropertyVa
 /* ---------- charts ---------- */
 const charts = {};
 
+/* a y scale that may be logarithmic: yscale: log */
+function yScale(o, lo, hi, r0, r1) {
+  if (o.yscale === "log") {
+    const l0 = Math.log10(Math.max(lo, 1e-9)), l1 = Math.log10(Math.max(hi, 1));
+    const f = v => r0 + (Math.log10(Math.max(v, lo)) - l0) / ((l1 - l0) || 1) * (r1 - r0);
+    const t = []; for (let e = Math.floor(l0); e <= Math.ceil(l1); e++) t.push(Math.pow(10, e));
+    return { y: f, ticks: t.filter(v => v >= lo && v <= hi) };
+  }
+  return { y: lin(lo, hi, r0, r1), ticks: ticks(lo, hi, 4) };
+}
+const errRange = r => r.lo != null && r.hi != null ? [+r.lo, +r.hi] : r.err != null ? [+(r.value ?? r.y) - +r.err, +(r.value ?? r.y) + +r.err] : null;
+function errorBar(svg, x, y, r, w = 5) {
+  const e = errRange(r); if (!e) return;
+  const g = el("g", { class: "err", stroke: "var(--ink)", "stroke-width": 1.2, opacity: .7 }, svg);
+  el("line", { x1: x, x2: x, y1: y(e[0]), y2: y(e[1]) }, g); el("line", { x1: x - w, x2: x + w, y1: y(e[0]), y2: y(e[0]) }, g); el("line", { x1: x - w, x2: x + w, y1: y(e[1]), y2: y(e[1]) }, g);
+}
 charts.bars = (fig, rows, o) => {
   const fmt = formatter(o.format), W = 640, mL = 48, mR = 8, mT = 22, n = rows.length || 1;
   const longest = Math.max(0, ...rows.map(r => String(r.label ?? "").length)), bw0 = (W - mL - mR) / n, tilt = n > 8 || longest * 6.5 > bw0;
   const mB = tilt ? 40 + Math.min(longest, 22) * 4 : 40;
-  const vals = rows.map(r => +r.value || 0), max = Math.max(0, ...vals), H = 260 + mB;
+  const vals = rows.map(r => +r.value || 0), his = rows.map(r => (errRange(r) || [0, +r.value || 0])[1]);
+  const max = Math.max(0, ...vals, ...his), H = 260 + mB, lo = o.yscale === "log" ? Math.max(1e-9, Math.min(...vals.filter(v => v > 0))) : 0;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
-  const y = lin(0, max || 1, H - mB, mT), bw = bw0, gap = Math.min(bw * .25, 10);
+  const { y, ticks: tk } = yScale(o, lo, max || 1, H - mB, mT), bw = bw0, gap = Math.min(bw * .25, 10);
   const g = el("g", { class: "grid" }, svg);
-  for (const t of ticks(0, max || 1, 4)) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
+  for (const t of tk) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
   rows.forEach((r, i) => {
-    const x = mL + i * bw + gap / 2, v = +r.value || 0;
-    const rect = el("rect", { class: "bar", x, y: y(v), width: bw - gap, height: Math.max(0, y(0) - y(v)), rx: 2, fill: r.color }, svg);
+    const x = mL + i * bw + gap / 2, v = +r.value || 0, base = y(lo);
+    const rect = el("rect", { class: "bar", x, y: Math.min(y(v), base), width: bw - gap, height: Math.max(0, Math.abs(base - y(v))), rx: 2, fill: r.color }, svg);
     title(rect, `${r.label}: ${fmt(v)}`);
-    txt(svg, x + (bw - gap) / 2, y(v) - 4, fmt(v), { class: "val", "text-anchor": "middle" });
+    errorBar(svg, x + (bw - gap) / 2, y, r, Math.min(8, (bw - gap) / 4));
+    if (!errRange(r)) txt(svg, x + (bw - gap) / 2, y(v) - 4, fmt(v), { class: "val", "text-anchor": "middle" });
     const lbl = String(r.label ?? ""), short = tilt && lbl.length > 22 ? lbl.slice(0, 21) + "…" : lbl;
     const t = txt(svg, x + (bw - gap) / 2, H - mB + 14, short, { class: "lbl", "text-anchor": tilt ? "end" : "middle" });
     if (tilt) t.setAttribute("transform", `rotate(-35 ${x + (bw - gap) / 2} ${H - mB + 14})`);
@@ -190,25 +227,41 @@ charts.hbars = (fig, rows, o) => {
   });
 };
 
+/* annotate: x=2010 | The crisis; x=2015 | Election  -> dashed markers with labels */
+const parseAnnotations = o => String(o.annotate || "").split(";").map(a => a.trim()).filter(Boolean).map(a => { const m = a.match(/^x\s*=\s*([^|]+)\|?\s*(.*)$/); return m ? { x: +m[1].trim(), text: m[2].trim() } : null; }).filter(Boolean);
+function drawAnnotations(svg, o, x, top, bottom) {
+  parseAnnotations(o).forEach((a, i) => {
+    const g = el("g", { class: "annot" }, svg);
+    el("line", { x1: x(a.x), x2: x(a.x), y1: top, y2: bottom, stroke: "var(--ink)", "stroke-dasharray": "3 3", opacity: .5 }, g);
+    if (a.text) txt(g, x(a.x) + 4, top + 10 + (i % 3) * 12, a.text, { class: "lbl", fill: "var(--ink)" });
+  });
+}
 function xyChart(fig, rows, o, area) {
   const fmt = formatter(o.format), W = 640, H = 300, mL = 50, mR = 14, mT = 14, mB = 34;
   const series = seriesOf(rows), xs = [...new Set(rows.map(r => +r.x))].sort((a, b) => a - b);
-  const ymax = Math.max(0, ...rows.map(r => +r.y || 0)) || 1, ymin = Math.min(0, ...rows.map(r => +r.y || 0));
+  const ys = rows.map(r => +r.y || 0), his = rows.map(r => (errRange(r) || [0, +r.y || 0])[1]);
+  const ymax = Math.max(0, ...ys, ...his) || 1, ymin = o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys);
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
-  const x = lin(xs[0], xs[xs.length - 1], mL, W - mR), y = lin(ymin, ymax, H - mB, mT);
+  const x = lin(xs[0], xs[xs.length - 1], mL, W - mR), { y, ticks: tk } = yScale(o, ymin, ymax, H - mB, mT);
   const g = el("g", { class: "grid" }, svg);
-  for (const t of ticks(ymin, ymax, 4)) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
+  for (const t of tk) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
   const ax = el("g", { class: "axis" }, svg);
   for (const t of ticks(xs[0], xs[xs.length - 1], 6)) txt(ax, x(t), H - mB + 16, String(t), { "text-anchor": "middle" });
-  series.forEach((s, si) => {
-    const pts = rows.filter(r => (r.series ?? "") === s).sort((a, b) => a.x - b.x);
+  series.forEach((sName, si) => {
+    const pts = rows.filter(r => (r.series ?? "") === sName).sort((a, b) => a.x - b.x);
     const d = pts.map((p, i) => `${i ? "L" : "M"}${x(+p.x).toFixed(1)} ${y(+p.y || 0).toFixed(1)}`).join(" ");
     const color = pts[0].color || COLORS[si % COLORS.length];
-    if (area) el("path", { d: `${d} L${x(+pts[pts.length - 1].x).toFixed(1)} ${y(0)} L${x(+pts[0].x).toFixed(1)} ${y(0)} Z`, fill: color, opacity: .18 }, svg);
-    const path = el("path", { class: "series", d, stroke: color }, svg); title(path, s || o.title || "");
-    for (const p of pts) { const c = el("circle", { class: "dot", cx: x(+p.x), cy: y(+p.y || 0), r: 3.2, fill: color }, svg); title(c, `${s ? s + " · " : ""}${p.x}: ${fmt(+p.y)}`); }
+    if (area) el("path", { d: `${d} L${x(+pts[pts.length - 1].x).toFixed(1)} ${y(ymin)} L${x(+pts[0].x).toFixed(1)} ${y(ymin)} Z`, fill: color, opacity: .18 }, svg);
+    if (pts.some(errRange)) { // shaded band for lo/hi or ±err
+      const top = pts.map((p, i) => `${i ? "L" : "M"}${x(+p.x).toFixed(1)} ${y((errRange(p) || [+p.y, +p.y])[1]).toFixed(1)}`).join(" ");
+      const bot = [...pts].reverse().map(p => `L${x(+p.x).toFixed(1)} ${y((errRange(p) || [+p.y, +p.y])[0]).toFixed(1)}`).join(" ");
+      el("path", { d: `${top} ${bot} Z`, fill: color, opacity: .15 }, svg);
+    }
+    const path = el("path", { class: "series", d, stroke: color }, svg); title(path, sName || o.title || "");
+    for (const p of pts) { const c = el("circle", { class: "dot", cx: x(+p.x), cy: y(+p.y || 0), r: 3.2, fill: color }, svg); title(c, `${sName ? sName + " · " : ""}${p.x}: ${fmt(+p.y)}`); }
   });
-  if (series.length > 1 || series[0]) legend(fig, series.map((s, i) => [s, rows.find(r => (r.series ?? "") === s).color || COLORS[i % COLORS.length]]));
+  drawAnnotations(svg, o, x, mT, H - mB);
+  if (series.length > 1 || series[0]) legend(fig, series.map((sName, i) => [sName, rows.find(r => (r.series ?? "") === sName).color || COLORS[i % COLORS.length]]));
 }
 charts.line = (f, r, o) => xyChart(f, r, o, false);
 charts.area = (f, r, o) => xyChart(f, r, o, true);
@@ -216,12 +269,63 @@ charts.area = (f, r, o) => xyChart(f, r, o, true);
 charts.scatter = (fig, rows, o) => {
   const fmt = formatter(o.format), W = 640, H = 340, mL = 50, mR = 14, mT = 14, mB = 34;
   const xs = rows.map(r => +r.x), ys = rows.map(r => +r.y);
-  const x = lin(Math.min(...xs), Math.max(...xs), mL, W - mR), y = lin(Math.min(0, ...ys), Math.max(...ys), H - mB, mT);
+  const ymin = o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys);
+  const x = lin(Math.min(...xs), Math.max(...xs), mL, W - mR), { y, ticks: tk } = yScale(o, ymin, Math.max(...ys), H - mB, mT);
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   const g = el("g", { class: "grid" }, svg);
-  for (const t of ticks(Math.min(0, ...ys), Math.max(...ys), 4)) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
+  for (const t of tk) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
   for (const t of ticks(Math.min(...xs), Math.max(...xs), 6)) txt(svg, x(t), H - mB + 16, String(t), { class: "lbl", "text-anchor": "middle" });
-  rows.forEach((r, i) => { const c = el("circle", { class: "dot", cx: x(+r.x), cy: y(+r.y), r: 5, fill: r.color || COLORS[0], opacity: .8 }, svg); title(c, `${r.label ?? ""} (${r.x}, ${fmt(+r.y)})`); if (r.label && rows.length <= 30) txt(svg, x(+r.x) + 7, y(+r.y) + 4, r.label, { class: "lbl" }); });
+  if (o.fit === "linear" && rows.length > 1) {   // least squares, with r²
+    const n = rows.length, mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+    const m = sxy / (sxx || 1), b = my - m * mx, r2 = sxx && syy ? (sxy * sxy) / (sxx * syy) : 0, x0 = Math.min(...xs), x1 = Math.max(...xs);
+    el("line", { x1: x(x0), y1: y(m * x0 + b), x2: x(x1), y2: y(m * x1 + b), stroke: "var(--c2)", "stroke-width": 2, "stroke-dasharray": "6 4" }, svg);
+    txt(svg, W - mR, mT + 10, `y = ${m.toPrecision(3)}x ${b < 0 ? "−" : "+"} ${Math.abs(b).toPrecision(3)}   r² = ${r2.toFixed(3)}`, { class: "lbl", "text-anchor": "end", fill: "var(--c2)" });
+  }
+  rows.forEach((r, i) => { errorBar(svg, x(+r.x), y, r, 4); const c = el("circle", { class: "dot", cx: x(+r.x), cy: y(+r.y), r: 5, fill: r.color || COLORS[0], opacity: .8 }, svg); title(c, `${r.label ?? ""} (${r.x}, ${fmt(+r.y)})`); if (r.label && rows.length <= 30) txt(svg, x(+r.x) + 7, y(+r.y) + 4, r.label, { class: "lbl" }); });
+};
+
+/* histogram: column `value`, option bins */
+charts.histogram = (fig, rows, o) => {
+  const vals = rows.map(r => +r.value).filter(v => !isNaN(v)); if (!vals.length) return;
+  const bins = Math.max(2, +o.bins || 20), lo = Math.min(...vals), hi = Math.max(...vals), w = (hi - lo) / bins || 1;
+  const counts = new Array(bins).fill(0); for (const v of vals) counts[Math.min(bins - 1, Math.floor((v - lo) / w))]++;
+  const fmt = formatter(o.format || (w < 1 ? "0.00" : w < 10 ? "0.0" : ","));
+  charts.bars(fig, counts.map((c, i) => ({ label: `${fmt(lo + i * w)}–${fmt(lo + (i + 1) * w)}`, value: c })), { ...o, format: "," });
+};
+
+/* box plot: columns label (group) and value */
+charts.boxplot = (fig, rows, o) => {
+  const fmt = formatter(o.format), groups = [...new Set(rows.map(r => r.label))], W = 640, mL = 50, mR = 14, mT = 14;
+  const longest = Math.max(0, ...groups.map(g => String(g).length)), tilt = longest * 6.5 > (W - mL - mR) / groups.length, mB = tilt ? 40 + Math.min(longest, 24) * 4 : 40, H = 280 + mB;
+  const q = (a, p) => { const i = (a.length - 1) * p, f = Math.floor(i); return a[f] + (a[Math.min(f + 1, a.length - 1)] - a[f]) * (i - f); };
+  const stats = groups.map(gname => { const a = rows.filter(r => r.label === gname).map(r => +r.value).filter(v => !isNaN(v)).sort((x, y) => x - y); const q1 = q(a, .25), q3 = q(a, .75), iqr = q3 - q1; const inl = a.filter(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr); return { gname, q1, q3, med: q(a, .5), lo: Math.min(...inl), hi: Math.max(...inl), out: a.filter(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr), n: a.length }; });
+  const all = rows.map(r => +r.value).filter(v => !isNaN(v)), ymin = Math.min(...all), ymax = Math.max(...all);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig), { y, ticks: tk } = yScale(o, ymin, ymax, H - mB, mT), bw = (W - mL - mR) / groups.length;
+  const g = el("g", { class: "grid" }, svg);
+  for (const t of tk) { el("line", { x1: mL, x2: W - mR, y1: y(t), y2: y(t) }, g); txt(g, mL - 6, y(t) + 4, fmt(t), { class: "lbl", "text-anchor": "end" }); }
+  stats.forEach((st, i) => {
+    const cx = mL + bw * (i + .5), hw = Math.min(28, bw * .3), color = COLORS[i % COLORS.length];
+    el("line", { x1: cx, x2: cx, y1: y(st.lo), y2: y(st.q1), stroke: color }, svg); el("line", { x1: cx, x2: cx, y1: y(st.q3), y2: y(st.hi), stroke: color }, svg);
+    for (const v of [st.lo, st.hi]) el("line", { x1: cx - hw / 2, x2: cx + hw / 2, y1: y(v), y2: y(v), stroke: color }, svg);
+    const box = el("rect", { x: cx - hw, y: y(st.q3), width: hw * 2, height: Math.max(1, y(st.q1) - y(st.q3)), fill: color, opacity: .25, stroke: color }, svg);
+    title(box, `${st.gname}: n=${st.n}, median ${fmt(st.med)}, IQR ${fmt(st.q1)}–${fmt(st.q3)}`);
+    el("line", { x1: cx - hw, x2: cx + hw, y1: y(st.med), y2: y(st.med), stroke: color, "stroke-width": 2.5 }, svg);
+    for (const v of st.out) el("circle", { cx, cy: y(v), r: 2.5, fill: color, opacity: .7 }, svg);
+    const t = txt(svg, cx, H - mB + 16, String(st.gname), { class: "lbl", "text-anchor": tilt ? "end" : "middle" });
+    if (tilt) t.setAttribute("transform", `rotate(-35 ${cx} ${H - mB + 16})`);
+  });
+};
+
+/* heatmap: columns x, y, value */
+charts.heatmap = (fig, rows, o) => {
+  const fmt = formatter(o.format), xs = [...new Set(rows.map(r => r.x))], ys = [...new Set(rows.map(r => r.y))], W = 640, mL = 110, mT = 8, mR = 8;
+  const cw = (W - mL - mR) / xs.length, ch = Math.min(28, Math.max(14, 260 / ys.length)), H = mT + ys.length * ch + 40;
+  const vals = rows.map(r => +r.value || 0), max = Math.max(...vals) || 1, min = Math.min(...vals, 0);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
+  for (const r of rows) { const xi = xs.indexOf(r.x), yi = ys.indexOf(r.y), t = (+r.value - min) / ((max - min) || 1); const c = el("rect", { x: mL + xi * cw, y: mT + yi * ch, width: cw - 1, height: ch - 1, fill: mixColor(.1 + .9 * t), rx: 2 }, svg); title(c, `${r.y} · ${r.x}: ${fmt(+r.value)}`); if (cw > 34 && ch > 16) txt(svg, mL + xi * cw + cw / 2, mT + yi * ch + ch / 2 + 4, fmt(+r.value), { class: "val", "text-anchor": "middle", fill: t > .6 ? "var(--card)" : "var(--ink)", "font-size": "10" }); }
+  ys.forEach((v, i) => txt(svg, mL - 6, mT + i * ch + ch / 2 + 4, String(v), { class: "lbl", "text-anchor": "end" }));
+  xs.forEach((v, i) => { const t = txt(svg, mL + i * cw + cw / 2, H - 24, String(v), { class: "lbl", "text-anchor": xs.length > 10 ? "end" : "middle" }); if (xs.length > 10) t.setAttribute("transform", `rotate(-35 ${mL + i * cw + cw / 2} ${H - 24})`); });
 };
 
 charts.bignumber = (fig, rows, o) => {
@@ -370,7 +474,9 @@ function table(rows, cols, fmt) {
 
 function renderChart(b) {
   const fig = document.createElement("figure"), o = b.opts, type = b.kind === "number" ? "bignumber" : b.type;
-  if (o.title) { const c = document.createElement("figcaption"); c.textContent = o.title; fig.appendChild(c); }
+  const figNo = o.figure && ctx.figs[o.figure];
+  if (figNo) fig.id = "fig-" + o.figure;
+  if (o.title || figNo) { const c = document.createElement("figcaption"); c.innerHTML = (figNo ? `<span class="figno">${esc(figNo)}.</span> ` : "") + esc(o.title || ""); fig.appendChild(c); }
   const body = document.createElement("div");
   let stops = null, $out = null;
   if (o.slider) {
@@ -401,7 +507,9 @@ function renderChart(b) {
     const tools = document.createElement("div"); tools.className = "tools";
     const btn = document.createElement("button"); btn.type = "button"; btn.textContent = "Show table"; let open = false, wrap = null;
     btn.onclick = () => { open = !open; btn.textContent = open ? "Hide table" : "Show table"; if (open) { wrap = document.createElement("div"); wrap.className = "tbl"; wrap.appendChild(table(last.rows, last.columns, formatter(o.format))); fig.appendChild(wrap); } else wrap?.remove(); };
-    tools.appendChild(btn); fig.appendChild(tools);
+    const dl = document.createElement("button"); dl.type = "button"; dl.textContent = "CSV";
+    dl.onclick = () => { const csv = [last.columns.join(","), ...last.rows.map(r => last.columns.map(c => { const v = r[c] ?? ""; return /[",\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : v; }).join(","))].join("\n"); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = (o.figure || o.title || "chart").replace(/\W+/g, "_") + ".csv"; a.click(); };
+    tools.appendChild(btn); tools.appendChild(dl); fig.appendChild(tools);
   }
   return fig;
 }
@@ -477,7 +585,8 @@ function renderImage(b) {
     if (/svg/.test(a.type)) { try { const svg = cleanSVG(typeof a.data === "string" ? a.data : new TextDecoder().decode(a.data)); if (o.alt) { svg.setAttribute("role", "img"); svg.setAttribute("aria-label", o.alt); } fig.appendChild(svg); } catch (e) { return note(e.message); } }
     else { const img = document.createElement("img"); img.alt = o.alt || ""; img.src = URL.createObjectURL(new Blob([a.data], { type: a.type })); fig.appendChild(img); }
   }
-  if (o.caption) { const c = document.createElement("figcaption"); c.innerHTML = md(o.caption); fig.appendChild(c); }
+  const figNo = o.figure && ctx.figs[o.figure]; if (figNo) fig.id = "fig-" + o.figure;
+  if (o.caption || figNo || o.credit) { const c = document.createElement("figcaption"); c.innerHTML = (figNo ? `<span class="figno">${esc(figNo)}.</span> ` : "") + md(o.caption || "") + (o.credit ? `<span class="credit">${md(o.credit)}</span>` : ""); fig.appendChild(c); }
   return fig;
 }
 
@@ -490,6 +599,23 @@ function renderBlock(b, ctx) {
   if (b.kind === "divider") return document.createElement("hr");
   if (b.kind === "image") return renderImage(b);
   if (b.kind === "embed") return renderEmbed(b);
+  if (b.kind === "math") { const d = document.createElement("div"); d.className = "math"; d.innerHTML = mathHTML(b.type || "", true); if (b.opts.label) d.insertAdjacentHTML("beforeend", `<span class="eqno">(${esc(b.opts.label)})</span>`); return d; }
+  if (b.kind === "abstract") { const d = document.createElement("div"); d.className = "abstract"; d.innerHTML = `<h3>Abstract</h3><p>${md(b.type || "")}</p>${b.opts.keywords ? `<p class="keywords"><b>Keywords:</b> ${md(b.opts.keywords)}</p>` : ""}`; return d; }
+  if (b.kind === "authors") {
+    const d = document.createElement("div"); d.className = "authors";
+    const people = String(b.type || "").split(";").map(x => x.trim()).filter(Boolean).map(x => { const m = x.match(/^(.*?)\s*\((.*)\)\s*$/); return m ? { name: m[1], aff: m[2] } : { name: x, aff: "" }; });
+    const affs = [...new Set(people.map(p => p.aff).filter(Boolean))];
+    d.innerHTML = `<p class="names">${people.map(p => `<span>${md(p.name)}${p.aff ? `<sup>${affs.indexOf(p.aff) + 1}</sup>` : ""}</span>`).join(", ")}</p>` + (affs.length ? `<p class="affs">${affs.map((a, i) => `<span><sup>${i + 1}</sup>${md(a)}</span>`).join(" ")}</p>` : "") + (b.opts.doi ? `<p class="doi">DOI: <a href="https://doi.org/${esc(b.opts.doi)}">${esc(b.opts.doi)}</a></p>` : "") + (b.opts.contact ? `<p class="doi">${md(b.opts.contact)}</p>` : "");
+    return d;
+  }
+  if (b.kind === "ref") { const d = document.createElement("span"); d.hidden = true; return d; }   // listed by the references block
+  if (b.kind === "references") {
+    const ol = document.createElement("ol"); ol.className = "references";
+    for (const r of ctx.refList) ol.insertAdjacentHTML("beforeend", `<li id="ref-${esc(r.key)}" value="${r.n}">${md(r.text || r.key)}${r.url ? ` <a href="${esc(r.url)}" rel="noopener">${esc(r.url.replace(/^https?:\/\//, ""))}</a>` : ""}${r.doi ? ` <a href="https://doi.org/${esc(r.doi)}">doi:${esc(r.doi)}</a>` : ""}</li>`);
+    if (!ctx.refList.length) ol.innerHTML = `<li class="note">No references. Add <code>ref:</code> blocks and cite them with [@key].</li>`;
+    return ol;
+  }
+  if (b.kind === "footnotes") { const ol = document.createElement("ol"); ol.className = "footnotes"; ol.dataset.footnotes = "1"; return ol; }
   if (b.kind === "quote") { const q = document.createElement("blockquote"); q.className = "pull"; q.innerHTML = `<p>${md(b.type || "")}</p>${b.opts.by ? `<cite>${md(b.opts.by)}</cite>` : ""}`; return q; }
   if (b.kind === "posts") {
     const posts = ctx.posts, ul = document.createElement("ol"); ul.className = "posts";
@@ -500,12 +626,22 @@ function renderBlock(b, ctx) {
   return renderChart(b);
 }
 function render(site, manifest, stats, root = $app, host = HOST) {
+  if (siteUsesMath(site) && !window.temml) { ensureMath().then(() => render(site, manifest, stats, root, host)); }
   const { props, blocks } = site, top = root === $app ? document.documentElement : root;
   top.dataset.theme = props.theme || "paper";
   if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) top.style.setProperty("--accent", props.accent);
   if (root === $app) document.title = props.site || host;
   if (props.lang) top.lang = props.lang;
   root.replaceChildren();
+  // numbering pre-pass: figures/tables in order of appearance, references in order of first citation
+  ctx = { refs: {}, figs: {}, notes: [], refList: [] };
+  let nf = 0, nt = 0;
+  for (const b of blocks) if ((b.kind === "chart" || b.kind === "image" || b.kind === "number" || b.kind === "embed") && b.opts?.figure) ctx.figs[b.opts.figure] = (b.kind === "chart" && b.type === "table") ? `Table ${++nt}` : `Figure ${++nf}`;
+  const refBlocks = blocks.filter(b => b.kind === "ref"), cited = [];
+  const scan = t => { for (const m of String(t || "").matchAll(/\[@([\w:.-]+)\]/g)) if (refBlocks.some(r => r.type === m[1]) && !cited.includes(m[1])) cited.push(m[1]); };
+  for (const b of blocks) { scan(b.text); scan(b.type); for (const k in b.opts || {}) scan(b.opts[k]); }
+  for (const r of refBlocks) if (!cited.includes(r.type)) cited.push(r.type);
+  cited.forEach((k, i) => { ctx.refs[k] = i + 1; const r = refBlocks.find(x => x.type === k); ctx.refList.push({ key: k, n: i + 1, text: r.opts.text, url: r.opts.url, doi: r.opts.doi }); });
   const head = document.createElement("header"); head.className = "site";
   head.innerHTML = `<h1>${md(props.site || host)}</h1>${props.tagline ? `<p class="tagline">${md(props.tagline)}</p>` : ""}${props.by || props.date ? `<p class="byline">${[props.by, props.date].filter(Boolean).map(md).join(" · ")}</p>` : ""}`;
   root.appendChild(head);
@@ -514,7 +650,7 @@ function render(site, manifest, stats, root = $app, host = HOST) {
   const posts = blocks.map((b, i) => ({ block: b, i })).filter(x => x.block.kind === "post");
   for (const p of posts) { const nxt = blocks.slice(p.i + 1).find(b => b.kind === "text" || b.kind === "post"); p.summary = nxt && nxt.kind === "text" ? nxt.text.slice(0, 160) + (nxt.text.length > 160 ? "…" : "") : ""; }
   posts.sort((a, b) => (b.block.opts.date || "").localeCompare(a.block.opts.date || "") || a.i - b.i);
-  const ctx = { posts };
+  ctx.posts = posts;
   let section = null; const sec = () => section || (section = root.appendChild(document.createElement("section")));
   const autoIndexAt = posts.length >= 2 && !blocks.some(b => b.kind === "posts") ? blocks.findIndex(b => b.kind === "post") : -1;
   blocks.forEach((b, i) => {
@@ -527,6 +663,10 @@ function render(site, manifest, stats, root = $app, host = HOST) {
     } else node = renderBlock(b, ctx);
     node.classList.add("reveal"); node.dataset.block = i; sec().appendChild(node);
   });
+  if (ctx.notes.length) {   // footnotes go into the footnotes: block if there is one, else before the footer
+    const ol = root.querySelector("[data-footnotes]") || root.appendChild(Object.assign(document.createElement("ol"), { className: "footnotes reveal in" }));
+    ol.innerHTML = ctx.notes.map((t, i) => `<li id="fn-${i + 1}">${md(t)} <a href="#fnref-${i + 1}" class="fnback" aria-label="back">↩</a></li>`).join("");
+  }
   const foot = document.createElement("footer"); foot.className = "site";
   foot.innerHTML = `${props.source ? `<p>Source: ${md(props.source)}</p>` : ""}<p>This site is served from DNS. ${stats.records} TXT records (${(stats.chars / 1024).toFixed(1)} KB of text) unpack to ${(stats.bytes / 1024).toFixed(0)} KB, rendered in your browser${db ? " with SQLite" : ""}. Read it yourself: <code>dig TXT _dnsite.${esc(host)}</code></p>`;
   root.appendChild(foot);
@@ -542,7 +682,8 @@ function fail(msg) {
 /* the same code powers the builder page (make.html): it sets data-noboot and drives this API */
 window.DNSite = {
   parseSite, serializeSite, render, renderBlock, cleanSVG, resolveTXT, loadBlob, parseManifest, ensureMap, embedFor, sha256hex,
-  blockKinds: () => ["heading", "text", "post", "posts", ...OPT_BLOCKS.filter(k => k !== "post"), "divider"],
+  blockKinds: () => ["heading", "text", "post", "posts", ...OPT_BLOCKS.filter(k => k !== "post"), "references", "footnotes", "divider"],
+  ensureMath, siteUsesMath,
   chartTypes: () => Object.keys(charts),
   async setDatabase(bytes) { const SQL = await ensureSQL(); if (db) db.close(); db = bytes ? new SQL.Database(bytes) : null; return db; },
   async newDatabase() { const SQL = await ensureSQL(); return new SQL.Database(); },

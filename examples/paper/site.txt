@@ -1,0 +1,99 @@
+site: How much did the UN revise its migrant-stock estimates?
+tagline: A short research note comparing the 2020 and 2024 editions of the International Migrant Stock tables for people born in Greece
+theme: journal
+accent: #1a4b8c
+date: October 2026
+source: UN DESA, International Migrant Stock 2020 and 2024 editions (CC BY 3.0 IGO). All figures computed in the browser from the database stored in this site's DNS records.
+
+authors: C. Littlefield (Curry Printing, Baltimore); A DNSite demonstration (dnsite.org)
+  contact: Correspondence: hello@dnsite.org
+
+abstract: The United Nations Population Division publishes estimates of the international migrant stock by origin and destination, revised every few years. We compare the 2020 and 2024 editions for one origin, Greece, across every destination both editions itemise. The 2024 edition reports $n = 775{,}995$ Greek-born people abroad in 2020 against $1{,}088{,}507$ in the 2020 edition, a revision of $-28.7\%$. The revision is not uniform: Germany and Türkiye are revised down by a third and by nearly two thirds, Australia and Canada by about 15%, while the United States is revised *up* by 15% [@un2024]. Everything on this page, including the data, is public in DNS and can be reproduced with `dig`.
+  keywords: migration; migrant stock; data revisions; Greece; reproducibility
+
+# 1. Background
+
+text: Each edition of the *International Migrant Stock* re-estimates past years as new censuses arrive, so the same year can carry different values in different editions [@un2020]. Users who mix editions get inconsistent series. This note measures the size of the 2020-to-2024 revision for a single origin with a long emigration history [@kasimis].
+text: Let $S_{d,y}^{(e)}$ be the stock of Greek-born people in destination $d$ in year $y$ as reported by edition $e$. We define the revision ratio
+
+math: r_{d,y} = \frac{S_{d,y}^{(2024)}}{S_{d,y}^{(2020)}}
+  label: 1
+
+text: and report it for $y = 2020$, the latest year both editions cover.[^Both editions give mid-year estimates. The 2024 edition itemises only the largest origins per destination, so destinations where Greece falls into its "Others" row are absent from the comparison; see Section 4.]
+
+# 2. Data
+
+text: The site's database holds both editions as tables (`stock_rev2020` and `stock`). The comparison set is the destinations present in both for 2020.
+
+number:
+  query: SELECT COUNT(*) AS value, 'destination countries present in both editions for 2020' AS label FROM stock a JOIN stock_rev2020 b ON a.iso2=b.iso2 AND a.year=b.year WHERE a.year=2020
+
+chart: table
+  title: Totals reported for 2020 by each edition
+  query: SELECT 'All destinations (edition total)' AS "Series", (SELECT people FROM totals_rev2020 WHERE year=2020) AS "2020 edition", (SELECT people FROM totals WHERE year=2020) AS "2024 edition" UNION ALL SELECT 'Destinations itemised in both', SUM(b.people), SUM(a.people) FROM stock a JOIN stock_rev2020 b ON a.iso2=b.iso2 AND a.year=b.year WHERE a.year=2020
+  format: ,
+  figure: t1
+
+# 3. Results
+
+chart: scatter
+  title: 2024-edition estimate against the 2020-edition estimate, per destination, 2020
+  query: SELECT b.people AS x, a.people AS y, a.dest AS label FROM stock a JOIN stock_rev2020 b ON a.iso2=b.iso2 AND a.year=b.year WHERE a.year=2020
+  fit: linear
+  yscale: log
+  format: k
+  figure: f1
+  note: Both axes in persons; the y axis is logarithmic. Points below the dashed fit were revised down more than average.
+
+text: [@f1] shows the two editions agree to within a few percent for most destinations, with a cluster of large downward revisions. The distribution of revision ratios is shown in [@f2] and, by region of destination, in [@f3].
+
+chart: histogram
+  title: Distribution of the revision ratio r (2024 edition ÷ 2020 edition), 2020
+  query: SELECT CAST(a.people AS REAL)/b.people AS value FROM stock a JOIN stock_rev2020 b ON a.iso2=b.iso2 AND a.year=b.year WHERE a.year=2020 AND b.people>0
+  bins: 12
+  format: 0.00
+  figure: f2
+
+chart: boxplot
+  title: Revision ratio by region of destination, 2020
+  query: SELECT a.region AS label, CAST(a.people AS REAL)/b.people AS value FROM stock a JOIN stock_rev2020 b ON a.iso2=b.iso2 AND a.year=b.year WHERE a.year=2020 AND b.people>0
+  format: 0.00
+  figure: f3
+  note: Boxes span the interquartile range; whiskers extend to the furthest value within 1.5 IQR; dots are outliers.
+
+chart: heatmap
+  title: Greek-born population by region and year, 2024 edition (thousands)
+  query: SELECT year AS x, region AS y, ROUND(SUM(people)/1000.0, 1) AS value FROM stock GROUP BY region, year
+  format: 0.0
+  figure: f4
+
+chart: line
+  title: Germany and the United States across editions
+  query: SELECT year AS x, people AS y, dest || ' (2020 ed.)' AS series FROM stock_rev2020 WHERE iso2 IN ('DE','US') UNION ALL SELECT year, people, dest || ' (2024 ed.)' FROM stock WHERE iso2 IN ('DE','US')
+  annotate: x=2010 | Debt crisis begins; x=2015 | Peak outflow
+  format: k
+  figure: f5
+
+text: [@f5] makes the pattern concrete: the United States series is revised up across the whole period (134,752 against 116,619 for 2020, $r = 1.16$), while Germany's 2020 value falls from 391,502 to 248,036, $r = 0.63$. Türkiye, not shown, has the largest revision of any major destination, $r = 0.37$.
+
+# 4. Limitations
+
+text: The 2024 edition folds smaller origins into an "Others" row for each destination, so the comparison excludes destinations where Greece was itemised in 2020 but not in 2024, including the United Kingdom and France.[^In the 2020 edition the United Kingdom held 75,441 Greek-born residents, the fifth-largest community; its absence from the 2024 edition is a reporting change, not a population change.] The revision therefore mixes methodological change with coverage change, and this note does not separate them.
+
+# 5. Conclusion
+
+text: Mixing editions of the migrant-stock tables is unsafe for Greece: the 2024 edition revises the 2020 total down by 28.7%, by more than that for Germany and Türkiye, and in the opposite direction for the United States. Analyses should use one edition throughout and state which, as [@f1] through [@f5] do here.
+
+# References
+
+ref: un2024
+  text: United Nations, Department of Economic and Social Affairs, Population Division (2024). International Migrant Stock 2024. POP/DB/MIG/Stock/Rev.2024.
+  url: https://www.un.org/development/desa/pd/content/international-migrant-stock
+ref: un2020
+  text: United Nations, Department of Economic and Social Affairs, Population Division (2020). International Migrant Stock 2020. POP/DB/MIG/Stock/Rev.2020.
+  url: https://www.un.org/development/desa/pd/content/international-migrant-stock
+ref: kasimis
+  text: Kasimis, C. and Kassimi, C. (2004). Greece: A History of Migration. Migration Information Source, Migration Policy Institute.
+  url: https://www.migrationpolicy.org/article/greece-history-migration
+references:
+footnotes:

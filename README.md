@@ -15,7 +15,7 @@ loader/             the universal loader (index.html, app.js, site.css, vendor/s
 dev/mock_doh.py     local DNS-over-HTTPS stand-in + static server for the loader
 tools/make_map.py   rebuilds loader/assets/world.svg + centroids.json from world-atlas
 data/               datasets and the scripts that build the demo databases
-examples/           demo sites (smoke test, Greek emigration)
+examples/           demo sites: smoke test, Greek emigration, a blog, a research note (paper)
 zone/               published records (generated)
 ```
 

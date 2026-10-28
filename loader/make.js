@@ -164,7 +164,7 @@ $("afile").onchange = e => { for (const f of e.target.files) addAsset(f).catch(e
 dropZone($("adrop"), files => { for (const f of files) addAsset(f).catch(err => { $state.textContent = err.message; }); });
 
 /* ---------- site settings ---------- */
-const SETTINGS = [["site", "Title", "text"], ["tagline", "Tagline", "text"], ["by", "By", "text"], ["date", "Date line", "text"], ["theme", "Theme", "select", ["paper", "ink", "slate"]], ["accent", "Accent", "color"], ["source", "Source line (footer)", "text"]];
+const SETTINGS = [["site", "Title", "text"], ["tagline", "Tagline", "text"], ["by", "By", "text"], ["date", "Date line", "text"], ["theme", "Theme", "select", ["paper", "ink", "slate", "journal", "newsroom", "fieldnotes"]], ["accent", "Accent", "color"], ["source", "Source line (footer)", "text"]];
 function renderSettings() {
   const body = $("settingsBody"); body.replaceChildren();
   for (const [key, label, kind, opts] of SETTINGS) {
@@ -178,7 +178,7 @@ function renderSettings() {
 }
 
 /* ---------- block list ---------- */
-const KIND_LABEL = { heading: "Heading", text: "Text", post: "Post", posts: "Post index", chart: "Chart", number: "Number", image: "Image", embed: "Embed", quote: "Quote", divider: "Divider" };
+const KIND_LABEL = { heading: "Heading", text: "Text", post: "Post", posts: "Post index", chart: "Chart", number: "Number", image: "Image", embed: "Embed", quote: "Quote", math: "Equation", abstract: "Abstract", authors: "Authors", ref: "Reference", references: "Reference list", footnotes: "Footnotes", divider: "Divider" };
 function summary(b) {
   if (b.kind === "heading") return "#".repeat(b.level) + " " + b.text;
   if (b.kind === "text") return b.text;
@@ -187,6 +187,9 @@ function summary(b) {
   if (b.kind === "chart") return `${b.type}${b.opts.title ? " · " + b.opts.title : ""}`;
   if (b.kind === "number") return b.opts.title || b.opts.query || "big number";
   if (b.kind === "post") return `${b.type}${b.opts.date ? " · " + b.opts.date : ""}`;
+  if (b.kind === "ref") return `[@${b.type}] ${b.opts.text || ""}`;
+  if (b.kind === "references") return "numbered list of the ref blocks, in order of citation";
+  if (b.kind === "footnotes") return "the [^footnotes] from the text";
   return b.type || "";
 }
 function renderList() {
@@ -222,6 +225,12 @@ const NEW = {
   image: () => ({ kind: "image", type: "", opts: { alt: "", align: "center" } }),
   embed: () => ({ kind: "embed", type: "", opts: {} }),
   quote: () => ({ kind: "quote", type: "Something worth repeating.", opts: { by: "" } }),
+  math: () => ({ kind: "math", type: "E = mc^2", opts: { label: "" } }),
+  abstract: () => ({ kind: "abstract", type: "One paragraph on what was done, what was found, and why it matters.", opts: { keywords: "" } }),
+  authors: () => ({ kind: "authors", type: "A. Author (University of Somewhere); B. Author (Institute of Things)", opts: { doi: "", contact: "" } }),
+  ref: () => ({ kind: "ref", type: "key" + (site.blocks.filter(b => b.kind === "ref").length + 1), opts: { text: "Author, A. (2026). Title. Journal, 1(2), 3–4.", url: "", doi: "" } }),
+  references: () => ({ kind: "references" }),
+  footnotes: () => ({ kind: "footnotes" }),
   divider: () => ({ kind: "divider" }),
 };
 for (const k of Object.keys(NEW)) { const b = document.createElement("button"); b.className = "btn small"; b.type = "button"; b.textContent = KIND_LABEL[k]; b.onclick = () => addBlock(NEW[k]()); $("addrow").appendChild(b); }
@@ -229,13 +238,16 @@ function addBlock(b) { const at = sel >= 0 ? sel + 1 : site.blocks.length; site.
 
 /* ---------- block forms ---------- */
 const CHART_COLS = {
-  bars: [["label", "Label"], ["value", "Value"]], hbars: [["label", "Label"], ["value", "Value"]], waffle: [["label", "Label"], ["value", "Value"]], bignumber: [["label", "Label"], ["value", "Value"]],
-  line: [["x", "X (time)"], ["y", "Y"], ["series", "Series (optional)"]], area: [["x", "X (time)"], ["y", "Y"], ["series", "Series (optional)"]],
-  scatter: [["x", "X"], ["y", "Y"], ["label", "Label (optional)"]], slope: [["x", "X (two values)"], ["y", "Y"], ["series", "Series"]],
+  bars: [["label", "Label"], ["value", "Value"], ["err", "± error (optional)"], ["lo", "Low (optional)"], ["hi", "High (optional)"]], hbars: [["label", "Label"], ["value", "Value"]], waffle: [["label", "Label"], ["value", "Value"]], bignumber: [["label", "Label"], ["value", "Value"]],
+  line: [["x", "X (time)"], ["y", "Y"], ["series", "Series (optional)"], ["err", "± error (optional)"], ["lo", "Low (optional)"], ["hi", "High (optional)"]], area: [["x", "X (time)"], ["y", "Y"], ["series", "Series (optional)"]],
+  scatter: [["x", "X"], ["y", "Y"], ["label", "Label (optional)"], ["err", "± error (optional)"]], slope: [["x", "X (two values)"], ["y", "Y"], ["series", "Series"]],
+  histogram: [["value", "Value"]], boxplot: [["label", "Group"], ["value", "Value"]], heatmap: [["x", "Column"], ["y", "Row"], ["value", "Value"]],
   timeline: [["x", "When"], ["label", "What"], ["note", "Note (optional)"]], table: [],
   choropleth: [["iso2", "Country code (ISO2)"], ["value", "Value"]], flowmap: [["iso2", "Country code (ISO2)"], ["value", "Value"], ["dest", "Name (optional)"]],
 };
-const EXTRA = { flowmap: [["from", "From (ISO2)", "GR"], ["focus", "Focus (europe, americas, or ISO2 list)", ""], ["labels", "Labels", "8"], ["top", "Top N", "30"]], choropleth: [["scale", "Scale (log or linear)", "log"]] };
+const EXTRA = { flowmap: [["from", "From (ISO2)", "GR"], ["focus", "Focus (europe, americas, or ISO2 list)", ""], ["labels", "Labels", "8"], ["top", "Top N", "30"]], choropleth: [["scale", "Scale (log or linear)", "log"]],
+  histogram: [["bins", "Bins", "20"]], scatter: [["fit", "Fit line (linear or none)", ""]], line: [["annotate", "Annotations (x=2010 | Label; x=2015 | Label)", ""]], area: [["annotate", "Annotations (x=2010 | Label; …)", ""]] };
+const LOG_OK = ["bars", "line", "area", "scatter", "boxplot"];
 const parsePick = s => Object.fromEntries(String(s || "").split(";").map(x => x.trim()).filter(Boolean).map(x => { const i = x.indexOf("="); return [x.slice(0, i).trim(), x.slice(i + 1).trim()]; }));
 const joinPick = o => Object.entries(o).filter(([, v]) => v !== "" && v != null).map(([k, v]) => `${k}=${v}`).join("; ");
 function sqlFromPick(p, type) {
@@ -264,6 +276,12 @@ function renderForm() {
   else if (b.kind === "post") h += `<div class="grid2">${field("Title", inp("type", b.type))}${field("Date", inp("date", o.date, "", "date"))}</div><p class="hint">Everything after this block, up to the next post, belongs to it. The index lists posts newest first.</p>`;
   else if (b.kind === "posts") h += `<p class="hint">Lists every post with its date and first line. Without this block, an index is placed before the first post automatically.</p>`;
   else if (b.kind === "quote") h += field("Quote", `<textarea data-f="type" rows="2">${esc(b.type)}</textarea>`) + field("Attribution", inp("by", o.by));
+  else if (b.kind === "math") h += field("LaTeX", `<textarea data-f="type" rows="2">${esc(b.type)}</textarea>`) + field("Equation number (optional)", inp("label", o.label, "1")) + `<p class="hint">Inline math goes in any text as <code>$…$</code>. Rendered with Temml to MathML, which every current browser displays natively.</p>`;
+  else if (b.kind === "abstract") h += field("Abstract", `<textarea data-f="type" rows="5">${esc(b.type)}</textarea>`) + field("Keywords", inp("keywords", o.keywords));
+  else if (b.kind === "authors") h += field("Authors, separated by ; with the affiliation in parentheses", `<textarea data-f="type" rows="3">${esc(b.type)}</textarea>`) + `<div class="grid2">${field("DOI", inp("doi", o.doi, "10.1000/xyz123"))}${field("Contact line", inp("contact", o.contact, "Correspondence: a.author@…"))}</div>`;
+  else if (b.kind === "ref") h += `<div class="grid2">${field("Key (cite it in text as [@key])", inp("type", b.type))}${field("DOI (optional)", inp("doi", o.doi))}</div>` + field("Reference text", `<textarea data-f="text" rows="2">${esc(o.text)}</textarea>`) + field("URL (optional)", inp("url", o.url, "", "url"));
+  else if (b.kind === "references") h += `<p class="hint">Numbered in order of first citation; uncited references come last. Add <b>Reference</b> blocks anywhere; they only show here.</p>`;
+  else if (b.kind === "footnotes") h += `<p class="hint">Write footnotes inline as <code>[^the note text]</code>; they are numbered and listed here. Without this block they appear before the footer.</p>`;
   else if (b.kind === "embed") h += field("Link (YouTube, Vimeo, Apple Music, Spotify, SoundCloud, Bandcamp, CodePen)", inp("type", b.type, "https://www.youtube.com/watch?v=…", "url")) + `<p class="hint">Bandcamp: on the album, click Share / Embed and paste the <code>bandcamp.com/EmbeddedPlayer/…</code> address from the embed code.</p>` + `<div class="grid2">${field("Caption", inp("caption", o.caption))}${field("Shape", selIn("ratio", o.ratio || "wide", [["wide", "Automatic"], ["square", "Square"], ["tall", "Vertical"], ["music", "Music player (tall)"], ["track", "Music player (one track)"]]))}</div>` + (b.type && !D.embedFor(b.type) ? `<p class="msg bad">That link isn't from a supported site.</p>` : "");
   else if (b.kind === "image") {
     const names = assetList().map(a => a.name);
@@ -271,6 +289,7 @@ function renderForm() {
     h += field("Source", selIn("_src", src, [...names.map(n => [n, "stored image: " + n]), ["url", "an https:// URL (not stored in DNS)"]]));
     if (src === "url" || isUrl) h += field("URL", inp("type", isUrl ? b.type : "", "https://…", "url")) + `<div class="toolbar">${field("SHA-256 (optional: the site refuses a swapped image)", inp("sha256", o.sha256, ""))}<button class="btn small" type="button" data-hash>Compute</button></div><p class="hint">Readers' browsers fetch this from that host, which can see their visit.</p>`;
     h += field("Alt text (what the image shows)", inp("alt", o.alt)) + field("Caption", inp("caption", o.caption)) + `<div class="grid2">${field("Width (e.g. 320px or 60%)", inp("width", o.width))}${field("Placement", selIn("align", o.align || "center", [["center", "Centred"], ["full", "Full width"], ["left", "Float left"], ["right", "Float right"]]))}</div>`;
+    h += `<div class="grid2">${field("Credit (photographer, source)", inp("credit", o.credit))}${field("Figure label (numbered; cite as [@label])", inp("figure", o.figure))}</div>`;
   }
   else if (b.kind === "chart" || b.kind === "number") {
     const type = b.kind === "number" ? "bignumber" : b.type, pick = parsePick(o.pick), simple = o.mode !== "sql" && (!o.query || o.pick), tnames = [...tables.keys()];
@@ -290,6 +309,7 @@ function renderForm() {
       }
     } else h += field("Query", `<textarea data-f="query" rows="3">${esc(o.query)}</textarea>`) + field("Slider column (optional; use {column} in the query)", inp("slider", o.slider));
     for (const [k, lbl, dflt] of EXTRA[type] || []) h += field(lbl, inp(k, o[k], dflt));
+    h += `<div class="grid2">${field("Figure label (numbered; cite it as [@label])", inp("figure", o.figure, "fig1"))}${LOG_OK.includes(type) ? field("Y axis", selIn("yscale", o.yscale || "linear", [["linear", "Linear"], ["log", "Logarithmic"]])) : ""}</div>`;
     h += field("Note under the chart", inp("note", o.note));
   }
   f.innerHTML = h;
@@ -300,6 +320,7 @@ function renderForm() {
 function onField(b, name, value) {
   const o = b.opts || (b.opts = {});
   if (name === "level") b.level = +value;
+  else if (name === "text" && b.kind === "ref") o.text = value;
   else if (name === "text" && b.kind !== "quote") b.text = value;
   else if (name === "type") { b.type = value; if (b.kind === "chart") { delete o.mode; renderForm(); } }
   else if (name === "_src") { if (value === "url") { b.type = ""; } else b.type = value; renderForm(); }

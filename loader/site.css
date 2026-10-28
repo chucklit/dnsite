@@ -117,3 +117,75 @@ blockquote.pull{margin:2rem 0;padding:0 0 0 1.2rem;border-left:4px solid var(--a
 blockquote.pull p{font-size:1.45rem;line-height:1.35;letter-spacing:-.01em;margin:0}
 blockquote.pull cite{display:block;margin-top:.6rem;font:13px/1.5 var(--sans);color:var(--muted);font-style:normal}
 @media (max-width:600px){figure.img.align-left,figure.img.align-right{float:none;max-width:100%;margin:1.6rem 0}}
+
+/* ---------- themes: journal (papers), newsroom (journalism), fieldnotes (kraft + Futura) ---------- */
+[data-theme="journal"]{--bg:#fbfaf7;--ink:#111;--muted:#555;--rule:#d8d6d0;--card:#fff;--accent:#1a4b8c;--serif:"Charter","Bitstream Charter","Source Serif Pro","Iowan Old Style",Georgia,serif;--measure:42rem}
+[data-theme="journal"] body,[data-theme="journal"].dnsite-root{font-size:16.5px;line-height:1.55}
+[data-theme="journal"] header.site h1{font-size:clamp(1.8rem,4.5vw,2.5rem);font-weight:700;line-height:1.15}
+[data-theme="journal"] header.site .tagline{font-size:1.05rem}
+[data-theme="journal"] h2{font-size:1.25rem;margin-top:2.2rem}
+[data-theme="journal"] h3{font-size:1.05rem;font-style:italic;font-weight:600}
+[data-theme="journal"] figure{border-radius:2px;background:var(--bg)}
+[data-theme="journal"] figure figcaption{font-family:var(--serif);font-weight:400;font-size:.92rem}
+[data-theme="journal"] .figno{font-weight:700}
+
+[data-theme="newsroom"]{--bg:#fff;--ink:#121212;--muted:#5a5a5a;--rule:#e2e2e2;--card:#fafafa;--accent:#c00;--serif:"Georgia","Iowan Old Style","Times New Roman",serif;--measure:40rem}
+[data-theme="newsroom"] header.site h1{font-family:var(--sans);font-weight:800;letter-spacing:-.03em;font-size:clamp(2.4rem,7vw,4rem);line-height:1}
+[data-theme="newsroom"] header.site .tagline{font-family:var(--sans);font-weight:400;font-size:1.2rem;color:var(--ink)}
+[data-theme="newsroom"] header.site .byline{text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+[data-theme="newsroom"] h2{font-family:var(--sans);font-weight:800;letter-spacing:-.02em;font-size:1.6rem}
+[data-theme="newsroom"] h3{font-family:var(--sans);font-weight:700}
+[data-theme="newsroom"] section>h2+p::first-letter,[data-theme="newsroom"] header.site+section>p:first-of-type::first-letter{float:left;font-family:var(--sans);font-weight:800;font-size:3.6em;line-height:.8;padding:.08em .12em 0 0}
+[data-theme="newsroom"] blockquote.pull{border-left:0;border-top:3px solid var(--ink);border-bottom:1px solid var(--rule);padding:1rem 0;text-align:center}
+[data-theme="newsroom"] blockquote.pull p{font-family:var(--sans);font-weight:700;font-size:1.6rem}
+[data-theme="newsroom"] figure{border:0;border-top:1px solid var(--ink);border-radius:0;padding-left:0;padding-right:0;background:none}
+[data-theme="newsroom"] figure.img{border:0}
+
+[data-theme="fieldnotes"]{--bg:#d9c29a;--ink:#2a1d12;--muted:#6a553d;--rule:#b99c6e;--card:#e7d5b3;--accent:#b83a1e;--accent-ink:#fff;
+  --c1:#b83a1e;--c2:#2a5d8a;--c3:#4f6b2f;--c4:#6b3f8a;--c5:#c77d12;--c6:#1f6f73;--c7:#8a2a4a;--c8:#3f4f8a;
+  --serif:"Futura","Futura PT","Jost","Avenir Next","Century Gothic","Trebuchet MS",sans-serif;--sans:"Futura","Futura PT","Jost","Avenir Next","Century Gothic",sans-serif;--measure:44rem}
+[data-theme="fieldnotes"] body,[data-theme="fieldnotes"].dnsite-root{font-size:16px;line-height:1.6;
+  background-color:var(--bg);background-image:radial-gradient(rgba(255,255,255,.14) 1px,transparent 1px),radial-gradient(rgba(60,35,10,.12) 1px,transparent 1px);background-size:7px 7px,11px 11px;background-position:0 0,3px 5px}
+[data-theme="fieldnotes"] header.site{border-bottom:3px double var(--ink);padding-top:3rem}
+[data-theme="fieldnotes"] header.site h1{text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:clamp(1.9rem,5vw,2.9rem);line-height:1.05}
+[data-theme="fieldnotes"] header.site .tagline{text-transform:uppercase;letter-spacing:.14em;font-size:.85rem;font-weight:600;color:var(--muted)}
+[data-theme="fieldnotes"] header.site .byline{display:inline-block;border:2px solid var(--accent);color:var(--accent);padding:.15rem .5rem;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:700;transform:rotate(-1.5deg);border-radius:3px}
+[data-theme="fieldnotes"] h2{text-transform:uppercase;letter-spacing:.1em;font-size:1.05rem;font-weight:700;border-bottom:1.5px solid var(--ink);padding-bottom:.3rem;margin-top:2.6rem}
+[data-theme="fieldnotes"] h3{text-transform:uppercase;letter-spacing:.08em;font-size:.85rem;font-weight:700;color:var(--muted)}
+[data-theme="fieldnotes"] p{background-image:linear-gradient(transparent calc(1.6em - 1px),rgba(42,29,18,.12) 0);background-size:100% 1.6em;background-attachment:local}
+[data-theme="fieldnotes"] figure{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;box-shadow:3px 3px 0 var(--rule);
+  background-image:linear-gradient(rgba(42,29,18,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(42,29,18,.07) 1px,transparent 1px);background-size:12px 12px}
+[data-theme="fieldnotes"] figure figcaption{text-transform:uppercase;letter-spacing:.08em;font-size:.8rem}
+[data-theme="fieldnotes"] figure button{border-color:var(--ink);color:var(--ink);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em}
+[data-theme="fieldnotes"] section.post header time,[data-theme="fieldnotes"] .posts time{font-weight:700;color:var(--accent)}
+[data-theme="fieldnotes"] ol.posts li a{text-transform:uppercase;letter-spacing:.06em;font-size:1rem}
+[data-theme="fieldnotes"] hr{border-top:3px double var(--ink)}
+[data-theme="fieldnotes"] blockquote.pull{border-left:0;border:1.5px dashed var(--ink);padding:1rem 1.2rem;background:var(--card);transform:rotate(-.6deg)}
+[data-theme="fieldnotes"] blockquote.pull p{font-size:1.15rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+[data-theme="fieldnotes"] footer.site{border-top:3px double var(--ink);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
+[data-theme="fieldnotes"] .bignumber .n{font-weight:700}
+
+/* ---------- paper blocks ---------- */
+.abstract{margin:1.5rem 0 2rem;padding:1rem 1.2rem;border-left:3px solid var(--accent);background:var(--card)}
+.abstract h3{margin:0 0 .4rem;font:700 12px/1.4 var(--sans);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.abstract p{margin:0;font-size:.97rem}
+.abstract .keywords{margin-top:.6rem;font-size:.88rem;color:var(--muted)}
+.authors{margin:-.6rem 0 1.5rem;font-family:var(--sans)}
+.authors .names{font-size:1.05rem;margin:0 0 .25rem}
+.authors .names sup,.authors .affs sup{font-size:.7em;color:var(--accent);margin-left:1px}
+.authors .affs{font-size:.85rem;color:var(--muted);margin:0 0 .25rem;display:flex;flex-wrap:wrap;gap:.2rem 1rem}
+.authors .doi{font-size:.85rem;color:var(--muted);margin:0}
+.math{margin:1.2rem 0;overflow-x:auto;font-size:1.15em;text-align:center;position:relative;padding:.3rem 2.5rem}
+.math .eqno{position:absolute;right:0;top:50%;transform:translateY(-50%);font:14px/1 var(--sans);color:var(--muted)}
+code.math{font-family:var(--mono);background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:.1em .3em}
+.figno{color:var(--accent);font-weight:700}
+a.cite,a.figref{text-decoration:none;font-weight:600}
+sup.fn a{text-decoration:none;font-weight:600;padding:0 .1em}
+ol.references{padding-left:1.6rem;font-size:.92rem;line-height:1.5}
+ol.references li{margin:0 0 .5rem;padding-left:.2rem}
+ol.references li:target,ol.footnotes li:target{background:var(--card);outline:2px solid var(--accent);outline-offset:4px;border-radius:3px}
+ol.footnotes{margin:2.5rem 0 0;padding:1rem 0 0 1.4rem;border-top:1px solid var(--rule);font-size:.88rem;color:var(--muted)}
+ol.footnotes li{margin:0 0 .35rem}
+.fnback{text-decoration:none}
+figure.img figcaption .credit{display:block;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem}
+figure .annot text{font-size:10px}
