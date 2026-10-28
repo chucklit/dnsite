@@ -57,7 +57,7 @@ chart: timeline
 text: **1. Write it.** Open [dnsite.org/make](https://dnsite.org/make.html). Add blocks from the list: headings, paragraphs, posts, charts, images, embeds, equations. The preview on the right is the real site.
 text: **2. Add data, if you have any.** Drop a CSV on the Data tab and it becomes a table. Charts pick columns from dropdowns; no SQL required, though it is there if you want it.
 text: **3. Add images.** SVGs go in as they are, cleaned and made safe. Photos are shrunk to WebP in your browser. Big pictures can stay on a host you already have and be linked by URL.
-text: **4. Publish.** Type your domain, download the zone file, and import it at your DNS host, or paste the records. Point the domain at a loader with a CNAME. Press *Check the domain* to watch the records land.
+text: **4. Publish.** Type your domain. If its DNS is on Cloudflare, press *Publish to Cloudflare* and paste a token scoped to that one zone; the records are written from your browser and checked for you. Anywhere else, download the zone file and import it, or paste the records. Point the domain at a loader with a CNAME, and press *Check the domain* to watch the records land.
 text: **5. Change it whenever.** Edit, publish again, done. The old version expires out of the world's caches within minutes.
 text: There is nothing to install, no account to make, and no server to keep alive. If dnsite.org itself ever disappears, the loader is [open source](https://github.com/chucklit/dnsite): point your domain at another copy and your site is back.
 

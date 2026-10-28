@@ -394,6 +394,53 @@ $("checkBtn").onclick = async () => {
   else show(`${ok} of ${published || live.length} records found; the rest may still be propagating.`, "bad");
 };
 
+/* ---------- publish to Cloudflare, from this browser, through the same-origin pass-through ---------- */
+const CF = "/api/cf/";
+async function cfCall(token, method, path, body) {
+  const r = await fetch(CF + path, { method, headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  if (!j || !j.success) throw new Error((j && j.errors && j.errors.map(e => e.message).join("; ")) || `Cloudflare answered ${r.status}`);
+  return j;
+}
+const cfContent = ss => ss.map(x => '"' + x.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"').join(" ");
+async function publishToCloudflare(token, log) {
+  await updatePublish();
+  const host = built.host, zoneName = host.split(".").slice(-2).join(".");
+  log(`Looking up zone ${zoneName}…`);
+  const zones = (await cfCall(token, "GET", `zones?name=${encodeURIComponent(zoneName)}`)).result;
+  if (!zones.length) throw new Error(`zone ${zoneName} isn't in this Cloudflare account, or the token can't see it`);
+  const zid = zones[0].id;
+  const existing = new Map();
+  for (let page = 1; ; page++) {
+    const res = await cfCall(token, "GET", `zones/${zid}/dns_records?type=TXT&per_page=500&page=${page}`);
+    for (const r of res.result) existing.set(r.name.toLowerCase(), r);
+    if (!res.result_info || page >= res.result_info.total_pages) break;
+  }
+  let created = 0, updated = 0, same = 0, deleted = 0;
+  for (const rec of built.recs) {
+    const content = cfContent(rec.strings), cur = existing.get(rec.name);
+    if (cur && cur.content === content) { same++; continue; }
+    const body = { type: "TXT", name: rec.name, content, ttl: 300 };
+    if (cur) { await cfCall(token, "PUT", `zones/${zid}/dns_records/${cur.id}`, body); updated++; log(`updated ${rec.name}`); }
+    else { await cfCall(token, "POST", `zones/${zid}/dns_records`, body); created++; log(`created ${rec.name}`); }
+  }
+  const wanted = new Set(built.recs.map(r => r.name)), stale = new RegExp(`^(_dnsite|[sdm]\\d+)\\.${host.replace(/\./g, "\\.")}$`);
+  for (const [name, cur] of existing) if (stale.test(name) && !wanted.has(name)) { await cfCall(token, "DELETE", `zones/${zid}/dns_records/${cur.id}`); deleted++; log(`removed ${name} (no longer used)`); }
+  return `${created} created, ${updated} updated, ${same} unchanged, ${deleted} removed`;
+}
+$("cfBtn").onclick = () => { $("cfPanel").hidden = false; try { const t = localStorage.getItem("dnsite.make.cftoken"); if (t) { $("cfToken").value = t; $("cfRemember").checked = true; } } catch (e) {} $("cfToken").focus(); };
+$("cfCancel").onclick = () => { $("cfPanel").hidden = true; };
+$("cfGo").onclick = async () => {
+  const token = $("cfToken").value.trim(), logEl = $("cfLog"); logEl.hidden = false; logEl.textContent = "";
+  const log = m => { logEl.textContent += m + "\n"; logEl.scrollTop = logEl.scrollHeight; };
+  if (!token) return show("Paste a token first.", "bad");
+  try { if ($("cfRemember").checked) localStorage.setItem("dnsite.make.cftoken", token); else localStorage.removeItem("dnsite.make.cftoken"); } catch (e) {}
+  $("cfGo").disabled = true; show("Publishing…");
+  try { const summary = await publishToCloudflare(token, log); log(summary); show(`Published: ${summary}. Checking the domain…`); await new Promise(r => setTimeout(r, 1500)); $("checkBtn").click(); }
+  catch (e) { log("error: " + e.message); show(e.message, "bad"); }
+  finally { $("cfGo").disabled = false; }
+};
+
 /* ---------- open an existing DNSite ---------- */
 $("loadBtn").onclick = async () => {
   const host = prompt("Domain of the DNSite to open:", $host.value || "dnsite.org"); if (!host) return;

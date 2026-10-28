@@ -19,6 +19,11 @@ or paste the records. 35 TXT records in all. Re-run `publish.py` + the push afte
 
 Check from anywhere once it propagates: `dig TXT _dnsite.dnsite.org +short`
 
+Or, once the loader is deployed, use the builder: https://dnsite.org/make.html -> Publish -> **Publish to
+Cloudflare**. It calls `/api/cf/*` on the loader's own origin, a Cloudflare Pages Function
+(`loader/functions/api/cf/[[path]].js`) that forwards the request and the person's token to
+api.cloudflare.com and keeps nothing. Only the zone lookup and DNS-record endpoints are allowed.
+
 ## 2. Loader -> a static host
 
 The loader is the `loader/` folder, plain static files, no build. Cloudflare Pages is the

@@ -30,8 +30,9 @@ python3 dev/mock_doh.py --port 8787
 ## Make one in the browser
 
 Open `/make.html` on any loader (https://dnsite.org/make.html): write the site, drop CSV
-files on the Data tab, watch the preview, then download the zone file from Publish. It can
-also open an existing DNSite from DNS for editing.
+files on the Data tab, watch the preview, then publish: straight to Cloudflare from the browser
+(through a same-origin pass-through that stores nothing), or download the zone file. It can also
+open an existing DNSite from DNS for editing.
 
 ## Publish for real
 
