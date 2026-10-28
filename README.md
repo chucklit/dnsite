@@ -43,3 +43,7 @@ open an existing DNSite from DNS for editing.
    `_dnsite.yourdomain.com` and takes it from there.
 
 Anyone can check what the site is made of: `dig TXT _dnsite.yourdomain.com`.
+
+## Prior art
+
+[triweb.dev](https://news.ycombinator.com/item?id=39502097) (2024) stores small text pages in TXT records and reads them over DNS-over-HTTPS; DNSite adds the database, the charts and maps, equations and references, images, themes, the site language and the builder.

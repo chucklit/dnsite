@@ -40,6 +40,7 @@ c.executemany('insert into history values(?,?,?)',[
  (2006,'SPF moves mail policy into TXT records','Every mail domain starts carrying text that software reads'),
  (2018,'DNS over HTTPS','RFC 8484 lets a web page ask a resolver directly, from JavaScript'),
  (2019,'SQLite compiled to WebAssembly','A full database engine runs inside the browser'),
+ (2024,'triweb.dev hosts small pages in TXT records','A few paragraphs per site, read over DNS-over-HTTPS; the proof that the base idea works'),
  (2026,'DNSite','Text, data and vector art in TXT records; a static loader draws the site')])
 c.execute('create table sites(name text, host text, kind text, records int, kb real, what text)')
 c.executemany('insert into sites values(?,?,?,?,?,?)',[

@@ -16,7 +16,7 @@ image: how
   align: full
   figure: how
 
-text: DNS can hold short pieces of text against a name. DNSite writes a site into those pieces: a readable document in a tiny site language, plus an optional SQLite database and vector images, compressed and split across records named `s0`, `s1`, `d0` and so on, with a manifest at `_dnsite` that says how many. Any domain can point at one shared, static **loader** page. When you open the domain, that page asks DNS for the domain's own records and draws what it finds ([@how]).
+text: Putting a page in DNS is not a new trick: [triweb.dev](https://news.ycombinator.com/item?id=39502097) did it in 2024 for a few paragraphs of text, and people were doing it as a stunt years before that. What is new is everything on top: a database in the records, real SQL in the browser, charts, maps, equations, images, and a builder. DNS can hold short pieces of text against a name. DNSite writes a site into those pieces: a readable document in a tiny site language, plus an optional SQLite database and vector images, compressed and split across records named `s0`, `s1`, `d0` and so on, with a manifest at `_dnsite` that says how many. Any domain can point at one shared, static **loader** page. When you open the domain, that page asks DNS for the domain's own records and draws what it finds ([@how]).
 quote: Every resolver on earth is a cache, and nothing expires but the domain.
   by: the whole idea, in one line
 
