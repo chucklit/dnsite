@@ -196,3 +196,12 @@ ol.footnotes li{margin:0 0 .35rem}
 .fnback{text-decoration:none}
 figure.img figcaption .credit{display:block;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem}
 figure .annot text{font-size:10px}
+
+/* forms (mail mode) */
+form.mailform{margin:1.6rem 0;padding:1rem 1.2rem;background:var(--card);border:1px solid var(--rule);border-radius:12px;font-family:var(--sans);display:flex;flex-direction:column;gap:.35rem}
+form.mailform h3{margin:0 0 .5rem}
+form.mailform label{font-size:.85rem;font-weight:600;color:var(--muted);margin-top:.4rem}
+form.mailform input,form.mailform textarea{font:15px/1.4 var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:.5rem .6rem;min-height:40px;width:100%;box-sizing:border-box}
+form.mailform .row{display:flex;align-items:center;gap:.8rem;margin-top:.7rem;flex-wrap:wrap}
+form.mailform button{font:600 15px var(--sans);background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:.55rem 1.2rem;min-height:40px;cursor:pointer}
+form.mailform .note{font-size:.8rem;color:var(--muted)}

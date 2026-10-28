@@ -73,6 +73,7 @@ chart: flowmap
 | image | `image: <asset name>` or `image: https://…` | `alt`, `caption`, `width` (`320px`, `60%`), `align` (`center` `full` `left` `right`), `sha256` (URL images: the loader refuses a file that no longer matches) |
 | embed | `embed: <url>` | YouTube, Vimeo, Apple Music, Spotify, SoundCloud, Bandcamp (its `EmbeddedPlayer` URL from Share / Embed), CodePen; fixed allowlist, rendered as an iframe; `caption`, `ratio` (`wide` `square` `tall` `music` `track`; music players pick their height automatically) |
 | quote | `quote: text` | `by` |
+| form | `form: Heading` | `to` (email), `fields` (comma list; default `name, email, message`), `button`, `subject`. Mail mode: Send opens the reader's mail app with the message filled in; nothing passes through a server, and the address is public in the records |
 | math | `math: <LaTeX>` | `label` (equation number). Inline math in any text as `$…$`. Rendered to MathML with Temml, loaded only by sites that use it |
 | abstract | `abstract: text` | `keywords` |
 | authors | `authors: Name (Affiliation); Name (Affiliation)` | `doi`, `contact`; affiliations are numbered |
@@ -87,6 +88,18 @@ Images also take `credit:`. Every chart has "Show table" and "CSV" buttons.
 
 Stored images live in the database table `assets(name TEXT PRIMARY KEY, type TEXT, data BLOB)`:
 SVG (sanitised on render) or WebP/PNG/JPEG bytes. The older `svg(name, body)` table still works.
+
+### Tokens (settings that tune a theme)
+
+`accent`, `bg`, `ink`, `muted`, `rule`, `card` (hex colours); `font` (body font stack), `heading-font`
+(headings, charts and chrome), `colors` (up to 8 hex colours for chart series), `measure` (reading
+column width, e.g. `44rem`). Each is optional and applied on top of the theme. Fonts are stacks of
+names only, never URLs: the loader loads no files on a site's behalf.
+
+### Edits are not deletions
+
+Replacing a record removes it from DNS, but third-party passive-DNS archives record TXT values they
+have seen and keep them. Treat anything published as permanent, and never publish a secret.
 
 Rules:
 * `key: value` at column 0 is a top-level property until the first `#` heading.

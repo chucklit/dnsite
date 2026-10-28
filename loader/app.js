@@ -59,7 +59,7 @@ function parseManifest(s) {
 
 /* ---------- site language ---------- */
 /* block kinds: the ones with options take indented `key: value` lines after them */
-const OPT_BLOCKS = ["chart", "number", "image", "embed", "quote", "post", "math", "ref", "abstract", "authors"];
+const OPT_BLOCKS = ["chart", "number", "image", "embed", "quote", "post", "math", "ref", "abstract", "authors", "form"];
 const PLAIN_BLOCKS = ["text", "divider", "posts", "references", "footnotes"];
 function parseSite(text) {
   const props = {}, blocks = [];
@@ -637,7 +637,19 @@ function renderBlock(b, ctx) {
     return ol;
   }
   if (b.kind === "footnotes") { const ol = document.createElement("ol"); ol.className = "footnotes"; ol.dataset.footnotes = "1"; return ol; }
-  if (!["chart", "number", "quote", "posts"].includes(b.kind)) { const n = document.createElement("p"); n.className = "note"; n.textContent = `(a "${b.kind}" block, which this loader doesn't know)`; return n; }
+  if (!["chart", "number", "quote", "posts", "form"].includes(b.kind)) { const n = document.createElement("p"); n.className = "note"; n.textContent = `(a "${b.kind}" block, which this loader doesn't know)`; return n; }
+  if (b.kind === "form") {
+    const f = document.createElement("form"), o = b.opts, to = String(o.to || "").trim();
+    f.className = "mailform"; f.setAttribute("novalidate", "");
+    const fields = (o.fields || "name, email, message").split(",").map(x => x.trim()).filter(Boolean);
+    f.innerHTML = (b.type ? `<h3>${md(b.type)}</h3>` : "") + fields.map(name => { const id = "f-" + slug(name) + "-" + Math.random().toString(36).slice(2, 7); const long = /message|comments?|notes?|question|details/i.test(name); return `<label for="${id}">${esc(name)}</label>${long ? `<textarea id="${id}" name="${esc(name)}" rows="4"></textarea>` : `<input id="${id}" name="${esc(name)}" type="${/e-?mail/i.test(name) ? "email" : "text"}">`}`; }).join("") + `<div class="row"><button type="submit">${esc(o.button || "Send")}</button><span class="note">${to ? "Opens your mail app with the message filled in." : "This form has no address to send to."}</span></div>`;
+    f.onsubmit = e => {
+      e.preventDefault(); if (!to) return;
+      const body = fields.map(n => `${n}: ${f.elements[n]?.value || ""}`).join("\n");
+      location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(o.subject || b.type || "From " + HOST)}&body=${encodeURIComponent(body)}`;
+    };
+    return f;
+  }
   if (b.kind === "quote") { const q = document.createElement("blockquote"); q.className = "pull"; q.innerHTML = `<p>${md(b.type || "")}</p>${b.opts.by ? `<cite>${md(b.opts.by)}</cite>` : ""}`; return q; }
   if (b.kind === "posts") {
     const posts = ctx.posts, ul = document.createElement("ol"); ul.className = "posts";
@@ -652,7 +664,11 @@ function render(site, manifest, stats, root = $app, host = HOST) {
   const { props, blocks } = site, top = root === $app ? document.documentElement : root;
   // a theme this loader doesn't ship falls back to paper, so a site still reads when it moves between loaders
   top.dataset.theme = THEMES.includes(props.theme) ? props.theme : "paper";
-  if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) top.style.setProperty("--accent", props.accent);
+  // styling tokens: a site can tune its theme without a theme of its own (see SPEC.md "Tokens")
+  const hex = v => /^#[0-9a-f]{3,8}$/i.test(v || "") ? v : null, fontOk = v => v && /^[\w\s,"'\-]{1,160}$/.test(v) ? v : null;
+  for (const k of ["bg", "ink", "muted", "rule", "card", "accent"]) { top.style.removeProperty("--" + k); if (hex(props[k])) top.style.setProperty("--" + k, props[k]); }
+  for (const [k, v] of [["serif", props.font], ["sans", props["heading-font"] || props.sans], ["measure", /^\d{2,3}(rem|ch|px)$/.test(props.measure || "") ? props.measure : null]]) { top.style.removeProperty("--" + k); if (k === "measure" ? v : fontOk(v)) top.style.setProperty("--" + k, v); }
+  (props.colors || "").split(/[,\s]+/).filter(hex).slice(0, 8).forEach((c, i) => top.style.setProperty(`--c${i + 1}`, c));
   if (root === $app) document.title = props.site || host;
   if (props.lang) top.lang = props.lang;
   root.replaceChildren();

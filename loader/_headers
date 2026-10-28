@@ -1,3 +1,15 @@
+# The loader's own files: always revalidate (ETag 304s are cheap) so a deploy reaches readers at once,
+# instead of Pages' default four-hour cache. The big vendor files rarely change and may cache.
+/app.js
+  Cache-Control: public, max-age=0, must-revalidate
+/make.js
+  Cache-Control: public, max-age=0, must-revalidate
+/site.css
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/make.html
+  Cache-Control: public, max-age=0, must-revalidate
 /.well-known/dnsite
   Content-Type: application/json
 /llms.txt

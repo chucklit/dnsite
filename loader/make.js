@@ -164,7 +164,8 @@ $("afile").onchange = e => { for (const f of e.target.files) addAsset(f).catch(e
 dropZone($("adrop"), files => { for (const f of files) addAsset(f).catch(err => { $state.textContent = err.message; }); });
 
 /* ---------- site settings ---------- */
-const SETTINGS = [["site", "Title", "text"], ["tagline", "Tagline", "text"], ["by", "By", "text"], ["date", "Date line", "text"], ["theme", "Theme", "select", ["paper", "ink", "slate", "journal", "newsroom", "fieldnotes"]], ["accent", "Accent", "color"], ["source", "Source line (footer)", "text"]];
+const SETTINGS = [["site", "Title", "text"], ["tagline", "Tagline", "text"], ["by", "By", "text"], ["date", "Date line", "text"], ["theme", "Theme", "select", ["paper", "ink", "slate", "journal", "newsroom", "fieldnotes"]], ["accent", "Accent", "color"], ["source", "Source line (footer)", "text"],
+  ["bg", "Page colour (optional)", "color"], ["ink", "Text colour (optional)", "color"], ["card", "Card colour (optional)", "color"], ["font", "Body font stack (optional)", "text"], ["heading-font", "Heading / chart font stack (optional)", "text"], ["colors", "Chart palette, comma-separated hex (optional)", "text"]];
 function renderSettings() {
   const body = $("settingsBody"); body.replaceChildren();
   for (const [key, label, kind, opts] of SETTINGS) {
@@ -172,13 +173,13 @@ function renderSettings() {
     const v = site.props[key] ?? "";
     f.innerHTML = `<label>${label}</label>` + (kind === "select" ? `<select class="field-in">${opts.map(o => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>` : kind === "color" ? `<div class="toolbar"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(v) ? v : "#1d5fc2"}"><input type="text" value="${esc(v)}" placeholder="#1d5fc2"></div>` : `<input type="text" value="${esc(v)}">`);
     const ins = f.querySelectorAll("input,select");
-    for (const i of ins) i.oninput = () => { const val = i.type === "color" ? i.value : i.value; site.props[key] = val; if (kind === "color") for (const j of ins) if (j !== i && j.type !== i.type) j.value = val; changed(false); };
+    for (const i of ins) i.oninput = () => { const val = i.value; if (val === "") delete site.props[key]; else site.props[key] = val; if (kind === "color") for (const j of ins) if (j !== i && j.type !== i.type && val) j.value = val; changed(false); };
     body.appendChild(f);
   }
 }
 
 /* ---------- block list ---------- */
-const KIND_LABEL = { heading: "Heading", text: "Text", post: "Post", posts: "Post index", chart: "Chart", number: "Number", image: "Image", embed: "Embed", quote: "Quote", math: "Equation", abstract: "Abstract", authors: "Authors", ref: "Reference", references: "Reference list", footnotes: "Footnotes", divider: "Divider" };
+const KIND_LABEL = { heading: "Heading", text: "Text", post: "Post", posts: "Post index", chart: "Chart", number: "Number", image: "Image", embed: "Embed", quote: "Quote", form: "Form", math: "Equation", abstract: "Abstract", authors: "Authors", ref: "Reference", references: "Reference list", footnotes: "Footnotes", divider: "Divider" };
 function summary(b) {
   if (b.kind === "heading") return "#".repeat(b.level) + " " + b.text;
   if (b.kind === "text") return b.text;
@@ -225,6 +226,7 @@ const NEW = {
   image: () => ({ kind: "image", type: "", opts: { alt: "", align: "center" } }),
   embed: () => ({ kind: "embed", type: "", opts: {} }),
   quote: () => ({ kind: "quote", type: "Something worth repeating.", opts: { by: "" } }),
+  form: () => ({ kind: "form", type: "Get in touch", opts: { to: "", fields: "name, email, message", button: "Send" } }),
   math: () => ({ kind: "math", type: "E = mc^2", opts: { label: "" } }),
   abstract: () => ({ kind: "abstract", type: "One paragraph on what was done, what was found, and why it matters.", opts: { keywords: "" } }),
   authors: () => ({ kind: "authors", type: "A. Author (University of Somewhere); B. Author (Institute of Things)", opts: { doi: "", contact: "" } }),
@@ -276,6 +278,7 @@ function renderForm() {
   else if (b.kind === "post") h += `<div class="grid2">${field("Title", inp("type", b.type))}${field("Date", inp("date", o.date, "", "date"))}</div><p class="hint">Everything after this block, up to the next post, belongs to it. The index lists posts newest first.</p>`;
   else if (b.kind === "posts") h += `<p class="hint">Lists every post with its date and first line. Without this block, an index is placed before the first post automatically.</p>`;
   else if (b.kind === "quote") h += field("Quote", `<textarea data-f="type" rows="2">${esc(b.type)}</textarea>`) + field("Attribution", inp("by", o.by));
+  else if (b.kind === "form") h += field("Heading", inp("type", b.type)) + `<div class="grid2">${field("Send to (email address)", inp("to", o.to, "you@example.com", "email"))}${field("Button text", inp("button", o.button, "Send"))}</div>` + field("Fields, comma-separated", inp("fields", o.fields, "name, email, message")) + field("Subject line (optional)", inp("subject", o.subject)) + `<p class="hint">Mail mode: pressing Send opens the reader's mail app with the message filled in. Nothing is sent through dnsite.org. The address is in the site's records, so it is public.</p>`;
   else if (b.kind === "math") h += field("LaTeX", `<textarea data-f="type" rows="2">${esc(b.type)}</textarea>`) + field("Equation number (optional)", inp("label", o.label, "1")) + `<p class="hint">Inline math goes in any text as <code>$…$</code>. Rendered with Temml to MathML, which every current browser displays natively.</p>`;
   else if (b.kind === "abstract") h += field("Abstract", `<textarea data-f="type" rows="5">${esc(b.type)}</textarea>`) + field("Keywords", inp("keywords", o.keywords));
   else if (b.kind === "authors") h += field("Authors, separated by ; with the affiliation in parentheses", `<textarea data-f="type" rows="3">${esc(b.type)}</textarea>`) + `<div class="grid2">${field("DOI", inp("doi", o.doi, "10.1000/xyz123"))}${field("Contact line", inp("contact", o.contact, "Correspondence: a.author@…"))}</div>`;

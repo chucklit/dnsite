@@ -34,6 +34,7 @@ chart: table
 chart: table
   title: Fits and doesn't
   query: SELECT kind AS "Site", CASE fits WHEN 1 THEN 'yes' ELSE 'no' END AS "Fits?", why AS "Because" FROM fits
+text: One more honest thing: an edit is not a deletion. Replacing a record removes it from DNS, but services that archive DNS keep old values, so treat anything you publish as permanent, and never put a secret in a DNSite.
 text: The limits are honest ones. DNS hosts cap a record at a few kilobytes and a zone at a few hundred to a few thousand records, so a site of a few hundred kilobytes is the practical ceiling. Text is nearly free; a photo costs about as much as seven blog posts. And only the domain's owner can change DNS, so a DNSite is read-only for visitors, which is exactly right for the things people publish rather than collect.[^Comments, sign-ups and orders need a server somewhere. That server can be anyone's; the site itself stays in DNS.]
 
 # What it costs to read

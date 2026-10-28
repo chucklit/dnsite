@@ -34,10 +34,13 @@ def main():
     ap.add_argument("--out", default="zone")
     ap.add_argument("--db")
     ap.add_argument("--map")
-    ap.add_argument("--chunk", type=int, default=1000)
+    ap.add_argument("--chunk", type=int, default=1000, help="characters per TXT record (1000 works everywhere)")
+    ap.add_argument("--cloudflare", action="store_true", help="2000-character records: Cloudflare and most hosts allow it, and it halves the record count")
     ap.add_argument("--ttl", type=int, default=300)
     a = ap.parse_args()
 
+    if a.cloudflare and a.chunk == 1000:
+        a.chunk = 2000
     host = a.host.rstrip(".").lower()
     site = open(a.site, "rb").read()
     db = open(a.db, "rb").read() if a.db else b""

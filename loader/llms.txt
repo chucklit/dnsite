@@ -23,6 +23,7 @@ Plain text, line based. `key: value` lines at the top are settings; everything a
     theme: paper            # paper | ink | slate | journal | newsroom | fieldnotes
     accent: #1d5fc2
     by: Author              date: October 2026          source: credit line in the footer
+    bg: #fffdf7  ink: #1a1a1a  card: #fff  font: Charter, Georgia, serif  heading-font: Inter, sans-serif  colors: #0b7285, #e8590c   # optional tokens on top of the theme
 
     # A heading starts a section (## and ### are smaller)
     text: A paragraph. **bold**, *italic*, `code`, [link](https://…), $inline\ math$, [^a footnote], [@citekey], [@figlabel]
@@ -36,6 +37,8 @@ Plain text, line based. `key: value` lines at the top are settings; everything a
       alt: what it shows   caption: …   credit: …   width: 60%   align: center|full|left|right   sha256: …   figure: f1
     embed: https://www.youtube.com/watch?v=…   # YouTube, Vimeo, Apple Music, Spotify, SoundCloud, Bandcamp (EmbeddedPlayer URL), CodePen
       caption: …   ratio: wide|square|tall|music|track
+    form: Get in touch                 # mail mode: Send opens the reader's mail app, filled in; the address is public
+      to: you@example.com   fields: name, email, message   button: Send   subject: …
     math: \frac{a}{b}                  # LaTeX, rendered to MathML
       label: 1
     abstract: …                        keywords: …
@@ -74,7 +77,7 @@ records per zone. Photos belong on an external host, referenced by URL (optional
 
 ## Limits and principles
 
-Read-only for visitors (only the domain owner can change DNS). No site-side JavaScript, ever: all
+Read-only for visitors (only the domain owner can change DNS). Edits are not deletions: passive-DNS archives keep old TXT values, so treat everything published as permanent and never publish a secret. No site-side JavaScript, ever: all
 behaviour comes from the loader's built-in blocks. Embeds come from a fixed allowlist. A `key:` line the
 language doesn't know renders as plain text (so prose like "Note: …" is safe); an unknown theme falls back to paper; a newer format version is refused with a message.
 Anyone may run their own loader (fork the repo, add themes in site.css) and point domains at it.
