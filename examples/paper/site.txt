@@ -5,8 +5,7 @@ accent: #1a4b8c
 date: October 2026
 source: UN DESA, International Migrant Stock 2020 and 2024 editions (CC BY 3.0 IGO). All figures computed in the browser from the database stored in this site's DNS records.
 
-authors: C. Littlefield (Curry Printing, Baltimore); A DNSite demonstration (dnsite.org)
-  contact: Correspondence: hello@dnsite.org
+authors: C. Littlefield (Baltimore, Maryland); A DNSite demonstration (dnsite.org)
 
 abstract: The United Nations Population Division publishes estimates of the international migrant stock by origin and destination, revised every few years. We compare the 2020 and 2024 editions for one origin, Greece, across every destination both editions itemise. The 2024 edition reports $n = 775{,}995$ Greek-born people abroad in 2020 against $1{,}088{,}507$ in the 2020 edition, a revision of $-28.7\%$. The revision is not uniform: Germany and Türkiye are revised down by a third and by nearly two thirds, Australia and Canada by about 15%, while the United States is revised *up* by 15% [@un2024]. Everything on this page, including the data, is public in DNS and can be reproduced with `dig`.
   keywords: migration; migrant stock; data revisions; Greece; reproducibility

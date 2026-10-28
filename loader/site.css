@@ -153,14 +153,21 @@ blockquote.pull cite{display:block;margin-top:.6rem;font:13px/1.5 var(--sans);co
 [data-theme="fieldnotes"] h2{text-transform:uppercase;letter-spacing:.1em;font-size:1.05rem;font-weight:700;border-bottom:1.5px solid var(--ink);padding-bottom:.3rem;margin-top:2.6rem}
 [data-theme="fieldnotes"] h3{text-transform:uppercase;letter-spacing:.08em;font-size:.85rem;font-weight:700;color:var(--muted)}
 [data-theme="fieldnotes"] p{background-image:linear-gradient(transparent calc(1.6em - 1px),rgba(42,29,18,.12) 0);background-size:100% 1.6em;background-attachment:local}
-[data-theme="fieldnotes"] figure{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;box-shadow:3px 3px 0 var(--rule);
-  background-image:linear-gradient(rgba(42,29,18,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(42,29,18,.07) 1px,transparent 1px);background-size:12px 12px}
+[data-theme="fieldnotes"] figure,[data-theme="fieldnotes"] .abstract,[data-theme="fieldnotes"] .result{--card:#fbf8f1;background:#fbf8f1;border:1.5px solid var(--ink);border-radius:4px;box-shadow:3px 3px 0 var(--rule);
+  background-image:linear-gradient(rgba(42,29,18,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(42,29,18,.08) 1px,transparent 1px);background-size:12px 12px}
+[data-theme="fieldnotes"] figure p,[data-theme="fieldnotes"] blockquote.pull p,[data-theme="fieldnotes"] .abstract p{background-image:none}
+[data-theme="fieldnotes"] figure .bar{fill:var(--accent)}
+[data-theme="fieldnotes"] figure .grid line{stroke:rgba(42,29,18,.25)}
+[data-theme="fieldnotes"] figure .axis text,[data-theme="fieldnotes"] figure .lbl{fill:#4a3a28}
+[data-theme="fieldnotes"] figure th,[data-theme="fieldnotes"] figure td{border-bottom-color:rgba(42,29,18,.25)}
+[data-theme="fieldnotes"] figure .map path.land{fill:#e4d7bd;stroke:#fbf8f1}
+[data-theme="fieldnotes"] .bignumber{background:#fbf8f1;border:1.5px solid var(--ink);border-radius:4px;box-shadow:3px 3px 0 var(--rule);padding:1rem 1.2rem}
 [data-theme="fieldnotes"] figure figcaption{text-transform:uppercase;letter-spacing:.08em;font-size:.8rem}
 [data-theme="fieldnotes"] figure button{border-color:var(--ink);color:var(--ink);text-transform:uppercase;font-size:.7rem;letter-spacing:.08em}
 [data-theme="fieldnotes"] section.post header time,[data-theme="fieldnotes"] .posts time{font-weight:700;color:var(--accent)}
 [data-theme="fieldnotes"] ol.posts li a{text-transform:uppercase;letter-spacing:.06em;font-size:1rem}
 [data-theme="fieldnotes"] hr{border-top:3px double var(--ink)}
-[data-theme="fieldnotes"] blockquote.pull{border-left:0;border:1.5px dashed var(--ink);padding:1rem 1.2rem;background:var(--card);transform:rotate(-.6deg)}
+[data-theme="fieldnotes"] blockquote.pull{border-left:0;border:1.5px dashed var(--ink);padding:1rem 1.2rem;background:#fbf8f1;transform:rotate(-.6deg)}
 [data-theme="fieldnotes"] blockquote.pull p{font-size:1.15rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
 [data-theme="fieldnotes"] footer.site{border-top:3px double var(--ink);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
 [data-theme="fieldnotes"] .bignumber .n{font-weight:700}
