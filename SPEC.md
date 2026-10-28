@@ -71,7 +71,7 @@ chart: flowmap
 | chart | `chart: <type>` | `title`, `query`, `format` (`,` `k` `%` `0.0`), `note`, `slider`, type options; `pick` and `mode` are the builder's column-picker state (ignored by the loader) |
 | number | `number:` | same as chart with type `bignumber` |
 | image | `image: <asset name>` or `image: https://…` | `alt`, `caption`, `width` (`320px`, `60%`), `align` (`center` `full` `left` `right`), `sha256` (URL images: the loader refuses a file that no longer matches) |
-| embed | `embed: <url>` | YouTube, Vimeo, Spotify, SoundCloud, CodePen links only (fixed allowlist, rendered as a sandboxed iframe); `caption`, `ratio` (`wide` `square` `tall`) |
+| embed | `embed: <url>` | YouTube, Vimeo, Apple Music, Spotify, SoundCloud, Bandcamp (its `EmbeddedPlayer` URL from Share / Embed), CodePen; fixed allowlist, rendered as an iframe; `caption`, `ratio` (`wide` `square` `tall` `music` `track`; music players pick their height automatically) |
 | quote | `quote: text` | `by` |
 | divider | `divider:` | |
 

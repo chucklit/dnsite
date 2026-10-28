@@ -428,15 +428,24 @@ const EMBEDS = [
   [/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode|show)\/([\w]+)/, (kind, id) => `https://open.spotify.com/embed/${kind}/${id}`, "Spotify"],
   [/^https:\/\/soundcloud\.com\/[\w-]+\/[\w-]+/, (_, __, url) => `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&visual=false`, "SoundCloud"],
   [/^https:\/\/codepen\.io\/([\w-]+)\/pen\/([\w-]+)/, (u, id) => `https://codepen.io/${u}/embed/${id}?default-tab=result`, "CodePen"],
+  // Apple Music: the public link becomes the official embed player; a song link (?i=) gets the short player
+  [/^https:\/\/music\.apple\.com\/([a-z]{2}\/(?:album|playlist|song)\/[^?\s]+(?:\?i=\d+)?)/, path => `https://embed.music.apple.com/${path}`, "Apple Music", url => /\?i=\d+|\/song\//.test(url) ? "track" : "music"],
+  // Bandcamp: only the EmbeddedPlayer URL from Bandcamp's own Share/Embed code carries the album or track id
+  [/^https:\/\/bandcamp\.com\/EmbeddedPlayer\/((?:album|track)=\d+[^\s"']*)/, q => `https://bandcamp.com/EmbeddedPlayer/${q}`, "Bandcamp", url => /track=\d+/.test(url) && !/album=/.test(url) ? "track" : "music"],
 ];
+const MUSIC_SHAPE = url => /open\.spotify\.com\/(track|episode)\//.test(url) ? "track" : /open\.spotify\.com\//.test(url) ? "music" : "";
 function embedFor(url) {
-  for (const [re, make, name] of EMBEDS) { const m = String(url).match(re); if (m) return { src: make(m[1], m[2], url), name }; }
+  for (const [re, make, name, shape] of EMBEDS) { const m = String(url).match(re); if (m) return { src: make(m[1], m[2], url), name, shape: shape ? shape(url) : MUSIC_SHAPE(url) }; }
   return null;
 }
 function renderEmbed(b) {
   const wrap = document.createElement("figure"), e = embedFor(b.type);
-  wrap.className = "embed" + (b.opts.ratio === "square" ? " square" : b.opts.ratio === "tall" ? " tall" : "");
-  if (!e) { wrap.innerHTML = `<p class="note">embed: only ${EMBEDS.map(x => x[2]).filter((v, i, a) => a.indexOf(v) === i).join(", ")} links are supported.</p>`; return wrap; }
+  const shape = b.opts.ratio && b.opts.ratio !== "wide" ? b.opts.ratio : (e && e.shape) || "";
+  wrap.className = "embed" + (["square", "tall", "music", "track"].includes(shape) ? " " + shape : "");
+  if (!e) {
+    const bc = /^https:\/\/[\w-]+\.bandcamp\.com\//.test(b.type || "");
+    wrap.innerHTML = `<p class="note">embed: ${bc ? "for Bandcamp, use the bandcamp.com/EmbeddedPlayer/… address from the album's Share / Embed code (the page link doesn't carry the album id)." : "only " + EMBEDS.map(x => x[2]).filter((v, i, a) => a.indexOf(v) === i).join(", ") + " links are supported."}</p>`; return wrap;
+  }
   const f = document.createElement("iframe");
   f.src = e.src; f.loading = "lazy"; f.allowFullscreen = true; f.referrerPolicy = "strict-origin-when-cross-origin";
   f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"; f.title = b.opts.title || e.name;

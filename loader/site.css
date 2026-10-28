@@ -109,6 +109,8 @@ figure.embed{padding:0;border:0;background:none;border-radius:0}
 figure.embed iframe{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:var(--rule)}
 figure.embed.square iframe{aspect-ratio:1}
 figure.embed.tall iframe{aspect-ratio:9/16;max-width:360px;margin:0 auto}
+figure.embed.music iframe{aspect-ratio:auto;height:450px}
+figure.embed.track iframe{aspect-ratio:auto;height:175px}
 figure.embed figcaption{font-weight:400;font-size:.85rem;color:var(--muted);margin:.5rem 0 0}
 /* pull quotes */
 blockquote.pull{margin:2rem 0;padding:0 0 0 1.2rem;border-left:4px solid var(--accent)}
