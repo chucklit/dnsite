@@ -167,6 +167,9 @@ function ticks(lo, hi, n = 5) {
   const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + step / 1e6; v += step) out.push(+v.toFixed(10));
   return out;
 }
+const tw = (str, fs = 11) => String(str).length * fs * .58;                 // rough text width in px
+const clip = (str, n) => { str = String(str ?? ""); return str.length > n ? str.slice(0, n - 1) + "…" : str; };
+const leftMargin = (fmt, lo, hi, base = 48) => Math.max(base, 12 + Math.max(...ticks(lo, hi, 4).map(t => tw(fmt(t)))));
 const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6", "--c7", "--c8"].map(v => `var(${v})`);
 const seriesOf = rows => [...new Set(rows.map(r => r.series ?? ""))];
 const accentRGB = () => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#1f6feb";
@@ -191,11 +194,13 @@ function errorBar(svg, x, y, r, w = 5) {
   el("line", { x1: x, x2: x, y1: y(e[0]), y2: y(e[1]) }, g); el("line", { x1: x - w, x2: x + w, y1: y(e[0]), y2: y(e[0]) }, g); el("line", { x1: x - w, x2: x + w, y1: y(e[1]), y2: y(e[1]) }, g);
 }
 charts.bars = (fig, rows, o) => {
-  const fmt = formatter(o.format), W = 640, mL = 48, mR = 8, mT = 22, n = rows.length || 1;
-  const longest = Math.max(0, ...rows.map(r => String(r.label ?? "").length)), bw0 = (W - mL - mR) / n, tilt = n > 8 || longest * 6.5 > bw0;
-  const mB = tilt ? 40 + Math.min(longest, 22) * 4 : 40;
+  const fmt = formatter(o.format), W = 640, mR = 8, mT = 22, n = rows.length || 1;
   const vals = rows.map(r => +r.value || 0), his = rows.map(r => (errRange(r) || [0, +r.value || 0])[1]);
-  const max = Math.max(0, ...vals, ...his), H = 260 + mB, lo = o.yscale === "log" ? Math.max(1e-9, Math.min(...vals.filter(v => v > 0))) : 0;
+  const max = Math.max(0, ...vals, ...his), lo = o.yscale === "log" ? Math.max(1e-9, Math.min(...vals.filter(v => v > 0))) : 0;
+  const mL = leftMargin(fmt, lo, max || 1);
+  const longest = Math.max(0, ...rows.map(r => String(r.label ?? "").length)), bw0 = (W - mL - mR) / n, tilt = n > 8 || longest * 6.5 > bw0;
+  const maxChars = tilt ? Math.max(8, Math.min(22, Math.round(bw0 / 4.2))) : 40;      // rotated labels stack diagonally: keep them short enough not to meet
+  const mB = tilt ? 40 + Math.min(longest, maxChars) * 4.6 : 40, H = 260 + mB;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   const { y, ticks: tk } = yScale(o, lo, max || 1, H - mB, mT), bw = bw0, gap = Math.min(bw * .25, 10);
   const g = el("g", { class: "grid" }, svg);
@@ -206,21 +211,21 @@ charts.bars = (fig, rows, o) => {
     title(rect, `${r.label}: ${fmt(v)}`);
     errorBar(svg, x + (bw - gap) / 2, y, r, Math.min(8, (bw - gap) / 4));
     if (!errRange(r)) txt(svg, x + (bw - gap) / 2, y(v) - 4, fmt(v), { class: "val", "text-anchor": "middle" });
-    const lbl = String(r.label ?? ""), short = tilt && lbl.length > 22 ? lbl.slice(0, 21) + "…" : lbl;
+    const lbl = String(r.label ?? ""), short = tilt ? clip(lbl, maxChars) : lbl;
     const t = txt(svg, x + (bw - gap) / 2, H - mB + 14, short, { class: "lbl", "text-anchor": tilt ? "end" : "middle" });
-    if (tilt) t.setAttribute("transform", `rotate(-35 ${x + (bw - gap) / 2} ${H - mB + 14})`);
+    if (tilt) t.setAttribute("transform", `rotate(-45 ${x + (bw - gap) / 2} ${H - mB + 14})`);
   });
 };
 
 charts.hbars = (fig, rows, o) => {
   const fmt = formatter(o.format), W = 640, rowH = 26, mR = 70, H = rows.length * rowH + 8;
-  const mL = Math.min(260, Math.max(90, 14 + 6.4 * Math.max(0, ...rows.map(r => String(r.label ?? "").length))));   // room for the longest label
+  const mL = Math.min(250, Math.max(90, 14 + 6.6 * Math.max(0, ...rows.map(r => String(r.label ?? "").length)))), maxChars = Math.floor((mL - 14) / 6.6);
   const max = Math.max(0, ...rows.map(r => +r.value || 0)) || 1;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   const x = lin(0, max, mL, W - mR);
   rows.forEach((r, i) => {
     const yy = 4 + i * rowH, v = +r.value || 0;
-    txt(svg, mL - 8, yy + 16, String(r.label ?? ""), { class: "lbl", "text-anchor": "end", style: "font-size:12px" });
+    const lt = txt(svg, mL - 8, yy + 16, clip(r.label, maxChars), { class: "lbl", "text-anchor": "end", style: "font-size:12px" }); if (String(r.label ?? "").length > maxChars) title(lt, String(r.label));
     const rect = el("rect", { class: "bar", x: mL, y: yy + 3, width: Math.max(0, x(v) - mL), height: rowH - 8, rx: 2, fill: r.color }, svg);
     title(rect, `${r.label}: ${fmt(v)}`);
     txt(svg, x(v) + 6, yy + 16, fmt(v), { class: "val" });
@@ -237,12 +242,13 @@ function drawAnnotations(svg, o, x, top, bottom) {
   });
 }
 function xyChart(fig, rows, o, area) {
-  const fmt = formatter(o.format), W = 640, H = 300, mL = 50, mR = 14, mT = 14, mB = 34;
+  const fmt = formatter(o.format), W = 640, H = 300, mR = 14, mT = 14, mB = 34;
   const series = seriesOf(rows), xs = [...new Set(rows.map(r => +r.x))].sort((a, b) => a - b);
   const ys = rows.map(r => +r.y || 0), his = rows.map(r => (errRange(r) || [0, +r.y || 0])[1]);
   // ymin: a number, or "data" to start the axis at the smallest value (for series that never go near zero)
   const ymax0 = Math.max(0, ...ys, ...his) || 1, ymax = o.ymax != null && !isNaN(+o.ymax) ? +o.ymax : ymax0;
   const ymin = o.ymin === "data" ? Math.min(...ys) : o.ymin != null && !isNaN(+o.ymin) ? +o.ymin : o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys);
+  const mL = leftMargin(fmt, ymin, ymax, 50);
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   const x = lin(xs[0], xs[xs.length - 1], mL, W - mR), { y, ticks: tk } = yScale(o, ymin, ymax, H - mB, mT);
   const g = el("g", { class: "grid" }, svg);
@@ -269,9 +275,9 @@ charts.line = (f, r, o) => xyChart(f, r, o, false);
 charts.area = (f, r, o) => xyChart(f, r, o, true);
 
 charts.scatter = (fig, rows, o) => {
-  const fmt = formatter(o.format), W = 640, H = 340, mL = 50, mR = 14, mT = 14, mB = 34;
+  const fmt = formatter(o.format), W = 640, H = 340, mR = 14, mT = 14, mB = 34;
   const xs = rows.map(r => +r.x), ys = rows.map(r => +r.y);
-  const ymin = o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys);
+  const ymin = o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys), mL = leftMargin(fmt, ymin, Math.max(...ys), 50);
   const x = lin(Math.min(...xs), Math.max(...xs), mL, W - mR), { y, ticks: tk } = yScale(o, ymin, Math.max(...ys), H - mB, mT);
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   const g = el("g", { class: "grid" }, svg);
@@ -298,8 +304,10 @@ charts.histogram = (fig, rows, o) => {
 
 /* box plot: columns label (group) and value */
 charts.boxplot = (fig, rows, o) => {
-  const fmt = formatter(o.format), groups = [...new Set(rows.map(r => r.label))], W = 640, mL = 50, mR = 14, mT = 14;
-  const longest = Math.max(0, ...groups.map(g => String(g).length)), tilt = longest * 6.5 > (W - mL - mR) / groups.length, mB = tilt ? 40 + Math.min(longest, 24) * 4 : 40, H = 280 + mB;
+  const fmt = formatter(o.format), groups = [...new Set(rows.map(r => r.label))], W = 640, mR = 14, mT = 14;
+  const allv = rows.map(r => +r.value).filter(v => !isNaN(v)), mL = leftMargin(fmt, Math.min(...allv), Math.max(...allv), 50);
+  const bw0 = (W - mL - mR) / groups.length, longest = Math.max(0, ...groups.map(g => String(g).length)), tilt = longest * 6.5 > bw0;
+  const maxChars = tilt ? Math.max(8, Math.min(22, Math.round(bw0 / 4.2))) : 40, mB = tilt ? 40 + Math.min(longest, maxChars) * 4.6 : 40, H = 280 + mB;
   const q = (a, p) => { const i = (a.length - 1) * p, f = Math.floor(i); return a[f] + (a[Math.min(f + 1, a.length - 1)] - a[f]) * (i - f); };
   const stats = groups.map(gname => { const a = rows.filter(r => r.label === gname).map(r => +r.value).filter(v => !isNaN(v)).sort((x, y) => x - y); const q1 = q(a, .25), q3 = q(a, .75), iqr = q3 - q1; const inl = a.filter(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr); return { gname, q1, q3, med: q(a, .5), lo: Math.min(...inl), hi: Math.max(...inl), out: a.filter(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr), n: a.length }; });
   const all = rows.map(r => +r.value).filter(v => !isNaN(v)), ymin = Math.min(...all), ymax = Math.max(...all);
@@ -314,20 +322,21 @@ charts.boxplot = (fig, rows, o) => {
     title(box, `${st.gname}: n=${st.n}, median ${fmt(st.med)}, IQR ${fmt(st.q1)}–${fmt(st.q3)}`);
     el("line", { x1: cx - hw, x2: cx + hw, y1: y(st.med), y2: y(st.med), stroke: color, "stroke-width": 2.5 }, svg);
     for (const v of st.out) el("circle", { cx, cy: y(v), r: 2.5, fill: color, opacity: .7 }, svg);
-    const t = txt(svg, cx, H - mB + 16, String(st.gname), { class: "lbl", "text-anchor": tilt ? "end" : "middle" });
-    if (tilt) t.setAttribute("transform", `rotate(-35 ${cx} ${H - mB + 16})`);
+    const t = txt(svg, cx, H - mB + 16, tilt ? clip(st.gname, maxChars) : String(st.gname), { class: "lbl", "text-anchor": tilt ? "end" : "middle" });
+    if (tilt) t.setAttribute("transform", `rotate(-45 ${cx} ${H - mB + 16})`);
   });
 };
 
 /* heatmap: columns x, y, value */
 charts.heatmap = (fig, rows, o) => {
-  const fmt = formatter(o.format), xs = [...new Set(rows.map(r => r.x))], ys = [...new Set(rows.map(r => r.y))], W = 640, mL = 110, mT = 8, mR = 8;
+  const fmt = formatter(o.format), xs = [...new Set(rows.map(r => r.x))], ys = [...new Set(rows.map(r => r.y))], W = 640, mT = 8, mR = 8;
+  const mL = Math.min(230, Math.max(70, 12 + tw(Math.max(...ys.map(v => String(v).length)) ? ys.reduce((a, b) => String(a).length >= String(b).length ? a : b) : "", 11))), yChars = Math.floor((mL - 12) / 6.4);
   const cw = (W - mL - mR) / xs.length, ch = Math.min(28, Math.max(14, 260 / ys.length)), H = mT + ys.length * ch + 40;
   const vals = rows.map(r => +r.value || 0), max = Math.max(...vals) || 1, min = Math.min(...vals, 0);
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   for (const r of rows) { const xi = xs.indexOf(r.x), yi = ys.indexOf(r.y), t = (+r.value - min) / ((max - min) || 1); const c = el("rect", { x: mL + xi * cw, y: mT + yi * ch, width: cw - 1, height: ch - 1, fill: mixColor(.1 + .9 * t), rx: 2 }, svg); title(c, `${r.y} · ${r.x}: ${fmt(+r.value)}`); if (cw > 34 && ch > 16) txt(svg, mL + xi * cw + cw / 2, mT + yi * ch + ch / 2 + 4, fmt(+r.value), { class: "val", "text-anchor": "middle", fill: t > .6 ? "var(--card)" : "var(--ink)", "font-size": "10" }); }
-  ys.forEach((v, i) => txt(svg, mL - 6, mT + i * ch + ch / 2 + 4, String(v), { class: "lbl", "text-anchor": "end" }));
-  xs.forEach((v, i) => { const t = txt(svg, mL + i * cw + cw / 2, H - 24, String(v), { class: "lbl", "text-anchor": xs.length > 10 ? "end" : "middle" }); if (xs.length > 10) t.setAttribute("transform", `rotate(-35 ${mL + i * cw + cw / 2} ${H - 24})`); });
+  ys.forEach((v, i) => txt(svg, mL - 6, mT + i * ch + ch / 2 + 4, clip(v, yChars), { class: "lbl", "text-anchor": "end" }));
+  xs.forEach((v, i) => { const long = xs.length > 10 || Math.max(...xs.map(x => String(x).length)) * 6.5 > cw; const t = txt(svg, mL + i * cw + cw / 2, H - 24, long ? clip(v, 14) : String(v), { class: "lbl", "text-anchor": long ? "end" : "middle" }); if (long) t.setAttribute("transform", `rotate(-45 ${mL + i * cw + cw / 2} ${H - 24})`); });
 };
 
 charts.bignumber = (fig, rows, o) => {
@@ -450,7 +459,11 @@ charts.flowmap = (fig, rows, o) => {
     labs.push({ r, x: x1 + (right ? 1 : -1) * (R(+r.value) + 3 * S), y: y1 + fs * .35, anchor: right ? "start" : "end", text: `${nameOf(r)} ${fmt(+r.value)}` });
   }
   labs.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < fs * 1.15 && Math.abs(labs[i].x - labs[i - 1].x) < 90 * S) labs[i].y = labs[i - 1].y + fs * 1.15;
+  const wOf = l => tw(l.text, fs), left = l => l.anchor === "end" ? l.x - wOf(l) : l.x, right = l => l.anchor === "end" ? l.x : l.x + wOf(l);
+  for (let pass = 0; pass < 4; pass++) for (let i = 1; i < labs.length; i++) for (let j = 0; j < i; j++) {
+    const a = labs[j], b = labs[i];
+    if (Math.min(right(a), right(b)) - Math.max(left(a), left(b)) > 0 && Math.abs(b.y - a.y) < fs * 1.15) b.y = a.y + fs * 1.15;
+  }
   const lg = el("g", { class: "labels" }, svg);
   for (const l of labs) {
     const y = Math.min(Math.max(l.y, vb.y + fs), vb.y + vb.height - 2);
