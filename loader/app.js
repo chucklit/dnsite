@@ -11,8 +11,13 @@ const $status = document.getElementById("status");
 const $prog = document.getElementById("prog");
 
 /* ---------- DNS ---------- */
-async function resolveTXT(name) {
-  const r = await fetch(`${DOH}?name=${encodeURIComponent(name)}&type=TXT`, { headers: { accept: "application/dns-json" } });
+async function resolveTXT(name, tries = 3) {
+  let r;
+  for (let i = 0; ; i++) {   // a site is many parallel lookups; one dropped request shouldn't fail the page
+    try { r = await fetch(`${DOH}?name=${encodeURIComponent(name)}&type=TXT`, { headers: { accept: "application/dns-json" } }); if (r.ok || r.status < 500) break; } catch (e) { if (i >= tries - 1) throw e; }
+    if (i >= tries - 1) break;
+    await new Promise(res => setTimeout(res, 300 * (i + 1)));
+  }
   if (!r.ok) throw new Error(`resolver answered ${r.status} for ${name}`);
   const j = await r.json();
   if (!j.Answer) return null;
@@ -691,7 +696,7 @@ function render(site, manifest, stats, root = $app, host = HOST) {
 
 function fail(msg) {
   $status.className = "status err";
-  $status.innerHTML = `<p><b>Couldn't load a site for <code>${esc(HOST)}</code>.</b></p><p>${esc(msg)}</p><p>A dnsite needs a manifest record:</p><code>dig TXT _dnsite.${esc(HOST)}</code>`;
+  $status.innerHTML = `<p><b>Couldn't load a site for <code>${esc(HOST)}</code>.</b></p><p>${esc(msg)}</p><p>A dnsite needs a manifest record:</p><code>dig TXT _dnsite.${esc(HOST)}</code><p><button type="button" onclick="location.reload()" style="font:inherit;padding:.4rem .9rem;border:1px solid currentColor;border-radius:8px;background:none;color:inherit;cursor:pointer">Try again</button></p>`;
 }
 
 /* the same code powers the builder page (make.html): it sets data-noboot and drives this API */
