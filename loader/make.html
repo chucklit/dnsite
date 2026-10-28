@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Make a DNSite</title>
-<meta name="description" content="Write a site, add data, preview it live, and get the DNS records that are the site.">
+<meta name="description" content="Build a site block by block, add data and images, preview it live, and get the DNS records that are the site.">
 <link rel="stylesheet" href="site.css">
 <style>
-/* builder chrome: sans, compact, sits around the live preview which uses the site styles */
+/* builder chrome: sans, compact, around a live preview that uses the site styles */
 html,body{height:100%}
 body{font:14px/1.5 var(--sans);background:var(--bg);color:var(--ink);overflow:hidden}
 .mk{display:grid;grid-template-rows:auto 1fr;height:100%}
@@ -17,10 +17,10 @@ body{font:14px/1.5 var(--sans);background:var(--bg);color:var(--ink);overflow:hi
 .mk-top h1 span{color:var(--muted);font-weight:400}
 .mk-top .spacer{flex:1}
 .mk-top .state{color:var(--muted);font-size:12px}
-.mk-body{display:grid;grid-template-columns:minmax(360px,46%) 1fr;min-height:0}
+.mk-body{display:grid;grid-template-columns:minmax(380px,46%) 1fr;min-height:0}
 .mk-left{display:grid;grid-template-rows:auto 1fr;min-height:0;border-right:1px solid var(--rule)}
-.tabs{display:flex;gap:.25rem;padding:.5rem .75rem 0;border-bottom:1px solid var(--rule);background:var(--card)}
-.tabs button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:.5rem .75rem;cursor:pointer;min-height:40px}
+.tabs{display:flex;gap:.1rem;padding:.4rem .5rem 0;border-bottom:1px solid var(--rule);background:var(--card);overflow-x:auto}
+.tabs button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:.5rem .65rem;cursor:pointer;min-height:40px;white-space:nowrap}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .pane{display:none;min-height:0;overflow:auto;padding:.75rem}
 .pane.on{display:flex;flex-direction:column;gap:.75rem}
@@ -29,18 +29,50 @@ body{font:14px/1.5 var(--sans);background:var(--bg);color:var(--ink);overflow:hi
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .btn.small{min-height:30px;padding:.2rem .55rem;font-size:13px}
-textarea,input[type=text]{font:13px/1.45 var(--mono);color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.6rem;width:100%;box-sizing:border-box}
-textarea{flex:1;min-height:14rem;resize:vertical;tab-size:2}
-input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
-.field{display:flex;flex-direction:column;gap:.3rem}
-.field label{font-weight:600;font-size:13px}
+.btn.icon{min-width:30px;padding:.2rem .4rem;justify-content:center}
+textarea,input[type=text],input[type=date],input[type=number],input[type=url],select.field-in{font:13px/1.45 var(--mono);color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.5rem .6rem;width:100%;box-sizing:border-box;min-height:36px}
+input[type=text],input[type=date],input[type=number],input[type=url],select.field-in{font-family:var(--sans);font-size:14px}
+input[type=color]{width:44px;height:36px;border:1px solid var(--rule);border-radius:8px;background:var(--card);padding:2px}
+textarea{resize:vertical;tab-size:2}
+textarea.src{flex:1;min-height:16rem;font-family:var(--mono)}
+.field{display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.field>label{font-weight:600;font-size:12.5px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem}
 .hint{color:var(--muted);font-size:12.5px;margin:0}
 .hint code,.hint kbd{font-family:var(--mono);background:var(--bg);border:1px solid var(--rule);border-radius:4px;padding:0 .3em}
-.tables{display:flex;flex-direction:column;gap:.4rem}
+details.settings{border:1px solid var(--rule);border-radius:8px;background:var(--card);padding:.4rem .7rem}
+details.settings summary{cursor:pointer;font-weight:600;min-height:28px;display:flex;align-items:center}
+details.settings .body{display:flex;flex-direction:column;gap:.5rem;padding:.4rem 0 .3rem}
+/* block list */
+.blocks{display:flex;flex-direction:column;gap:.3rem}
+.blk{display:grid;grid-template-columns:auto 1fr auto;gap:.5rem;align-items:center;border:1px solid var(--rule);border-radius:8px;background:var(--card);padding:.35rem .5rem;cursor:pointer;min-height:40px}
+.blk.sel{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.blk.drag{opacity:.4}
+.blk .kind{font:600 11px/1 var(--sans);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--bg);border-radius:4px;padding:.3rem .4rem;min-width:52px;text-align:center}
+.blk .kind.post{color:var(--accent-ink);background:var(--accent)}
+.blk .what{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px}
+.blk .acts{display:flex;gap:.15rem;opacity:.55}
+.blk:hover .acts,.blk.sel .acts{opacity:1}
+.blk .acts button{font:inherit;background:none;border:0;color:var(--muted);cursor:pointer;min-width:26px;min-height:26px;border-radius:5px}
+.blk .acts button:hover{background:var(--bg);color:var(--ink)}
+.addrow{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center}
+.form{border:1px solid var(--rule);border-radius:8px;background:var(--card);padding:.7rem;display:flex;flex-direction:column;gap:.5rem}
+.form h3{margin:0;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;background:var(--card);border:0;padding:.35rem .7rem;cursor:pointer;color:var(--muted);min-height:34px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+/* data + assets */
+.tables,.assets{display:flex;flex-direction:column;gap:.4rem}
 .tbl-card{border:1px solid var(--rule);border-radius:8px;padding:.5rem .7rem;background:var(--card)}
 .tbl-card b{font-family:var(--mono)}
 .tbl-card .cols{color:var(--muted);font-size:12.5px;word-break:break-word}
 .tbl-card .row{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.asset{display:grid;grid-template-columns:56px 1fr auto;gap:.6rem;align-items:center;border:1px solid var(--rule);border-radius:8px;padding:.4rem .6rem;background:var(--card)}
+.asset .thumb{width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:6px;overflow:hidden}
+.asset .thumb img,.asset .thumb svg{max-width:100%;max-height:100%}
+.asset b{font-family:var(--mono)}
+.asset .meta{color:var(--muted);font-size:12.5px}
 .result{overflow:auto;max-height:16rem;border:1px solid var(--rule);border-radius:8px;background:var(--card)}
 .result table{border-collapse:collapse;width:100%;font-size:12.5px}
 .result th,.result td{text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule);white-space:nowrap}
@@ -50,11 +82,15 @@ input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
 .stat div{display:flex;flex-direction:column}
 .stat b{font-size:20px;font-variant-numeric:tabular-nums}
 .stat span{color:var(--muted);font-size:12px}
+.meter{height:6px;background:var(--rule);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+.meter.warn i{background:#d9480f}
 .msg{padding:.5rem .7rem;border-radius:8px;background:var(--card);border:1px solid var(--rule);font-size:13px}
 .msg.ok{border-color:#2b8a3e;color:#2b8a3e}
 .msg.bad{border-color:#d9480f;color:#d9480f}
 .mk-right{min-height:0;overflow:auto;background:var(--bg)}
 #preview{min-height:100%}
+#preview [data-block].hl{outline:2px solid var(--accent);outline-offset:6px;border-radius:4px}
 .drop{border:2px dashed var(--rule);border-radius:10px;padding:1rem;text-align:center;color:var(--muted)}
 .drop.over{border-color:var(--accent);color:var(--ink)}
 @media (max-width:860px){
@@ -63,7 +99,6 @@ input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
   .mk-body{grid-template-columns:1fr}
   .mk-left{border-right:0;border-bottom:1px solid var(--rule)}
   .mk-right{min-height:60vh}
-  textarea{min-height:12rem}
 }
 </style>
 </head>
@@ -73,28 +108,30 @@ input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
     <h1><a href="/">DNSite</a> <span>/ make</span></h1>
     <span class="state" id="state"></span>
     <span class="spacer"></span>
+    <button class="btn small" id="exampleBtn" type="button">Example</button>
     <button class="btn small" id="loadBtn" type="button">Open an existing DNSite…</button>
   </div>
   <div class="mk-body">
     <div class="mk-left">
       <div class="tabs" role="tablist">
-        <button role="tab" aria-selected="true" data-tab="write" type="button">Write</button>
+        <button role="tab" aria-selected="true" data-tab="blocks" type="button">Blocks</button>
+        <button role="tab" aria-selected="false" data-tab="text" type="button">Text</button>
         <button role="tab" aria-selected="false" data-tab="data" type="button">Data</button>
+        <button role="tab" aria-selected="false" data-tab="assets" type="button">Images</button>
         <button role="tab" aria-selected="false" data-tab="publish" type="button">Publish</button>
       </div>
 
-      <section class="pane on" id="pane-write">
-        <div class="toolbar" id="snippets">
-          <button class="btn small" type="button" data-snip="heading"># Heading</button>
-          <button class="btn small" type="button" data-snip="text">Text</button>
-          <select class="btn small" id="chartPick" aria-label="Insert a chart"><option value="">Chart…</option></select>
-          <button class="btn small" type="button" data-snip="number">Big number</button>
-          <button class="btn small" type="button" data-snip="divider">Divider</button>
-          <span class="spacer"></span>
-          <button class="btn small" type="button" id="exampleBtn">Load an example</button>
-        </div>
-        <textarea id="src" spellcheck="false" aria-label="Site document"></textarea>
-        <p class="hint">The text is the site. <code>key: value</code> lines at the top are settings; <code># Heading</code> starts a section; <code>chart: bars</code> plus indented options draws a chart from a SQL query against your data. The preview updates as you type.</p>
+      <section class="pane on" id="pane-blocks">
+        <details class="settings" id="settings"><summary>Site settings</summary><div class="body" id="settingsBody"></div></details>
+        <div class="blocks" id="blocks"></div>
+        <div class="addrow" id="addrow"><span class="hint">Add:</span></div>
+        <div class="form" id="form" hidden></div>
+        <p class="hint">Click a block to edit it. Drag to reorder. The preview on the right is the real site.</p>
+      </section>
+
+      <section class="pane" id="pane-text">
+        <textarea class="src" id="src" spellcheck="false" aria-label="Site document"></textarea>
+        <p class="hint">The text is the site; the Blocks tab is a view of it. <code>key: value</code> lines at the top are settings; <code># Heading</code> starts a section; <code>post: Title</code> starts a blog post; <code>chart: bars</code> plus indented options draws a chart from a SQL query.</p>
       </section>
 
       <section class="pane" id="pane-data">
@@ -102,11 +139,20 @@ input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
         <div class="tables" id="tables"></div>
         <div class="field">
           <label for="sql">Try a query</label>
-          <textarea id="sql" rows="3" style="min-height:4.5rem;flex:0" placeholder="SELECT * FROM mytable LIMIT 20"></textarea>
+          <textarea id="sql" rows="3" placeholder="SELECT * FROM mytable LIMIT 20"></textarea>
           <div class="toolbar"><button class="btn small" id="runSql" type="button">Run</button><span class="hint" id="sqlMsg"></span></div>
         </div>
         <div class="result" id="sqlOut" hidden></div>
-        <p class="hint">Charts read columns by name: <code>label</code>/<code>value</code> for bars and waffles, <code>x</code>/<code>y</code>(/<code>series</code>) for lines, <code>iso2</code>/<code>value</code> for maps. Use <code>AS</code> in the query to rename.</p>
+      </section>
+
+      <section class="pane" id="pane-assets">
+        <div class="drop" id="adrop">Drop SVG, PNG, JPEG or WebP files here, or <label class="btn small" style="display:inline-flex">choose files<input type="file" id="afile" accept=".svg,.png,.jpg,.jpeg,.webp,image/*" multiple hidden></label>. They are stored inside the site's records.</div>
+        <div class="grid2">
+          <div class="field"><label for="maxw">Shrink photos to (px wide)</label><input type="number" id="maxw" value="800" min="100" max="4000"></div>
+          <div class="field"><label for="quality">WebP quality</label><input type="number" id="quality" value="0.8" min="0.3" max="1" step="0.05"></div>
+        </div>
+        <div class="assets" id="assets"></div>
+        <p class="hint">SVGs are cleaned and made safe; photos are re-encoded as WebP at the width above. Every image costs records: a logo is a few, a photo twenty or more. For big pictures, use an image block with a URL instead and keep them on a host you already have.</p>
       </section>
 
       <section class="pane" id="pane-publish">
@@ -114,7 +160,12 @@ input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
           <label for="host">Domain the site will live at</label>
           <input type="text" id="host" placeholder="example.com  or  yourname.example.com" autocapitalize="off" autocorrect="off">
         </div>
+        <div class="grid2">
+          <div class="field"><label for="chunk">Record size</label><select class="field-in" id="chunk"><option value="1000">1,000 characters (works everywhere)</option><option value="2000">2,000 characters (Cloudflare and most hosts; half the records)</option></select></div>
+          <div class="field"><label for="cap">Records your DNS host allows</label><input type="number" id="cap" value="1000" min="50" step="50"></div>
+        </div>
         <div class="stat" id="pubStat"></div>
+        <div class="meter" id="meter"><i></i></div>
         <div class="toolbar">
           <button class="btn primary" id="zoneBtn" type="button">Download zone file</button>
           <button class="btn" id="copyBtn" type="button">Copy records</button>
@@ -122,7 +173,7 @@ input[type=text]{font-family:var(--sans);font-size:14px;min-height:40px}
         </div>
         <div class="msg" id="pubMsg" hidden></div>
         <div class="records" id="records"></div>
-        <p class="hint">Import the zone file at your DNS host (or paste the records), then point the domain at a loader with a CNAME to <code>dnsite.pages.dev</code> (or an A record for a bare domain). <b>Check the domain</b> asks public DNS whether every record has landed.</p>
+        <p class="hint">Import the zone file at your DNS host (or paste the records), then point the domain at a loader with a CNAME to <code>dnsite.pages.dev</code> (an A record for a bare domain). <b>Check the domain</b> asks public DNS whether every record has landed.</p>
       </section>
     </div>
     <div class="mk-right"><main id="preview" class="dnsite-root" data-theme="paper"></main></div>

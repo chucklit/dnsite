@@ -53,6 +53,9 @@ function parseManifest(s) {
 }
 
 /* ---------- site language ---------- */
+/* block kinds: the ones with options take indented `key: value` lines after them */
+const OPT_BLOCKS = ["chart", "number", "image", "embed", "quote", "post"];
+const PLAIN_BLOCKS = ["text", "divider", "posts"];
 function parseSite(text) {
   const props = {}, blocks = [];
   let cur = null, inHead = true;
@@ -69,15 +72,32 @@ function parseSite(text) {
     const kv = line.match(/^([\w-]+):\s*(.*)$/);
     if (!kv) { blocks.push({ kind: "text", text: line }); continue; }
     const [, key, val] = kv;
-    if (inHead && !["text", "chart", "number", "image", "divider"].includes(key)) { props[key] = val; continue; }
+    if (inHead && !OPT_BLOCKS.includes(key) && !PLAIN_BLOCKS.includes(key)) { props[key] = val; continue; }
     inHead = false;
-    if (key === "chart" || key === "number" || key === "image") { cur = { kind: key, type: val, opts: {} }; blocks.push(cur); }
-    else if (key === "divider") blocks.push({ kind: "divider" });
+    if (OPT_BLOCKS.includes(key)) { cur = { kind: key, type: val, opts: {} }; blocks.push(cur); }
+    else if (key === "divider" || key === "posts") blocks.push({ kind: key });
     else if (key === "text") blocks.push({ kind: "text", text: val });
     else blocks.push({ kind: "text", text: line });
   }
   return { props, blocks };
 }
+/* the inverse: blocks back to the text form (the builder edits blocks, the text stays the source of truth) */
+function serializeSite({ props, blocks }) {
+  const out = [];
+  for (const k in props) if (props[k] !== "" && props[k] != null) out.push(`${k}: ${props[k]}`);
+  for (const b of blocks) {
+    if (b.kind === "heading") out.push("", "#".repeat(b.level) + " " + b.text);
+    else if (b.kind === "text") out.push("text: " + b.text);
+    else if (b.kind === "divider" || b.kind === "posts") out.push(b.kind + ":");
+    else {
+      if (b.kind === "post") out.push("");
+      out.push(`${b.kind}: ${b.type ?? ""}`.replace(/\s+$/, ""));
+      for (const k in b.opts || {}) if (b.opts[k] !== "" && b.opts[k] != null) out.push(`  ${k}: ${b.opts[k]}`);
+    }
+  }
+  return out.join("\n").replace(/^\n+/, "") + "\n";
+}
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
 
 /* ---------- markdown-lite (whitelist, never raw HTML) ---------- */
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -399,30 +419,105 @@ function cleanSVG(text) {
 }
 
 /* ---------- page ---------- */
+/* ---------- media blocks ---------- */
+const EMBEDS = [
+  [/^https:\/\/(?:www\.)?youtube\.com\/watch\?(?:.*&)?v=([\w-]{6,})/, id => `https://www.youtube-nocookie.com/embed/${id}`, "YouTube"],
+  [/^https:\/\/(?:www\.)?youtube\.com\/shorts\/([\w-]{6,})/, id => `https://www.youtube-nocookie.com/embed/${id}`, "YouTube"],
+  [/^https:\/\/youtu\.be\/([\w-]{6,})/, id => `https://www.youtube-nocookie.com/embed/${id}`, "YouTube"],
+  [/^https:\/\/(?:www\.)?vimeo\.com\/(\d+)/, id => `https://player.vimeo.com/video/${id}?dnt=1`, "Vimeo"],
+  [/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode|show)\/([\w]+)/, (kind, id) => `https://open.spotify.com/embed/${kind}/${id}`, "Spotify"],
+  [/^https:\/\/soundcloud\.com\/[\w-]+\/[\w-]+/, (_, __, url) => `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&visual=false`, "SoundCloud"],
+  [/^https:\/\/codepen\.io\/([\w-]+)\/pen\/([\w-]+)/, (u, id) => `https://codepen.io/${u}/embed/${id}?default-tab=result`, "CodePen"],
+];
+function embedFor(url) {
+  for (const [re, make, name] of EMBEDS) { const m = String(url).match(re); if (m) return { src: make(m[1], m[2], url), name }; }
+  return null;
+}
+function renderEmbed(b) {
+  const wrap = document.createElement("figure"), e = embedFor(b.type);
+  wrap.className = "embed" + (b.opts.ratio === "square" ? " square" : b.opts.ratio === "tall" ? " tall" : "");
+  if (!e) { wrap.innerHTML = `<p class="note">embed: only ${EMBEDS.map(x => x[2]).filter((v, i, a) => a.indexOf(v) === i).join(", ")} links are supported.</p>`; return wrap; }
+  const f = document.createElement("iframe");
+  f.src = e.src; f.loading = "lazy"; f.allowFullscreen = true; f.referrerPolicy = "strict-origin-when-cross-origin";
+  f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"; f.title = b.opts.title || e.name;
+  wrap.appendChild(f);
+  if (b.opts.caption) { const c = document.createElement("figcaption"); c.innerHTML = md(b.opts.caption); wrap.appendChild(c); }
+  return wrap;
+}
+async function sha256hex(buf) { return [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))].map(b => b.toString(16).padStart(2, "0")).join(""); }
+function assetRow(name) {
+  try { const r = query(`SELECT type, data FROM assets WHERE name=${sqlLit(name)}`).rows[0]; if (r) return r; } catch (e) {}
+  try { const r = query(`SELECT body FROM svg WHERE name=${sqlLit(name)}`).rows[0]; if (r) return { type: "image/svg+xml", data: r.body }; } catch (e) {}
+  return null;
+}
+function renderImage(b) {
+  const fig = document.createElement("figure"), o = b.opts, src = String(b.type || "").trim();
+  fig.className = "img align-" + (["left", "right", "full"].includes(o.align) ? o.align : "center");
+  if (o.width && /^\d+(%|px)?$/.test(o.width)) fig.style.width = /%|px/.test(o.width) ? o.width : o.width + "px";
+  const note = m => { fig.innerHTML = `<p class="note">image: ${esc(m)}</p>`; return fig; };
+  if (/^https:\/\//.test(src)) {
+    const img = document.createElement("img"); img.alt = o.alt || ""; img.loading = "lazy"; img.decoding = "async";
+    if (o.sha256) {   // verify against the published hash; a host that swaps the picture gets a blank, not a trusted-looking image
+      fetch(src, { mode: "cors" }).then(r => r.arrayBuffer()).then(async buf => { if ((await sha256hex(buf)) === o.sha256.toLowerCase()) img.src = URL.createObjectURL(new Blob([buf])); else fig.replaceChildren(Object.assign(document.createElement("p"), { className: "note", textContent: "image: the file at " + src + " no longer matches its published hash." })); })
+        .catch(() => { img.src = src; img.dataset.verified = "unavailable"; });
+    } else img.src = src;
+    fig.appendChild(img);
+  } else if (/^http:\/\//.test(src)) return note("only https:// images are shown.");
+  else {
+    const a = assetRow(src); if (!a) return note(`no asset named "${src}"`);
+    if (/svg/.test(a.type)) { try { const svg = cleanSVG(typeof a.data === "string" ? a.data : new TextDecoder().decode(a.data)); if (o.alt) { svg.setAttribute("role", "img"); svg.setAttribute("aria-label", o.alt); } fig.appendChild(svg); } catch (e) { return note(e.message); } }
+    else { const img = document.createElement("img"); img.alt = o.alt || ""; img.src = URL.createObjectURL(new Blob([a.data], { type: a.type })); fig.appendChild(img); }
+  }
+  if (o.caption) { const c = document.createElement("figcaption"); c.innerHTML = md(o.caption); fig.appendChild(c); }
+  return fig;
+}
+
+/* ---------- page ---------- */
+function postMeta(b) { const d = b.opts.date ? new Date(b.opts.date + (/\d{4}-\d{2}-\d{2}$/.test(b.opts.date) ? "T12:00:00" : "")) : null; return { title: b.type || "Untitled", date: b.opts.date || "", nice: d && !isNaN(d) ? d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : b.opts.date || "", id: slug((b.opts.date ? b.opts.date + "-" : "") + (b.type || "post")) };
+}
+function renderBlock(b, ctx) {
+  if (b.kind === "heading") { const n = document.createElement(b.level === 1 ? "h2" : "h3"); n.innerHTML = md(b.text); return n; }
+  if (b.kind === "text") { const n = document.createElement("p"); n.innerHTML = md(b.text); return n; }
+  if (b.kind === "divider") return document.createElement("hr");
+  if (b.kind === "image") return renderImage(b);
+  if (b.kind === "embed") return renderEmbed(b);
+  if (b.kind === "quote") { const q = document.createElement("blockquote"); q.className = "pull"; q.innerHTML = `<p>${md(b.type || "")}</p>${b.opts.by ? `<cite>${md(b.opts.by)}</cite>` : ""}`; return q; }
+  if (b.kind === "posts") {
+    const posts = ctx.posts, ul = document.createElement("ol"); ul.className = "posts";
+    for (const p of posts) { const m = postMeta(p.block); ul.insertAdjacentHTML("beforeend", `<li><a href="#${m.id}">${md(m.title)}</a>${m.nice ? `<time datetime="${esc(m.date)}">${esc(m.nice)}</time>` : ""}${p.summary ? `<p>${md(p.summary)}</p>` : ""}</li>`); }
+    if (!posts.length) ul.innerHTML = `<li class="note">No posts yet.</li>`;
+    return ul;
+  }
+  return renderChart(b);
+}
 function render(site, manifest, stats, root = $app, host = HOST) {
-  const { props, blocks } = site;
-  (root === $app ? document.documentElement : root).dataset.theme = props.theme || "paper";
-  if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) (root === $app ? document.documentElement : root).style.setProperty("--accent", props.accent);
+  const { props, blocks } = site, top = root === $app ? document.documentElement : root;
+  top.dataset.theme = props.theme || "paper";
+  if (props.accent && /^#[0-9a-f]{3,8}$/i.test(props.accent)) top.style.setProperty("--accent", props.accent);
   if (root === $app) document.title = props.site || host;
-  if (props.lang) document.documentElement.lang = props.lang;
+  if (props.lang) top.lang = props.lang;
   root.replaceChildren();
   const head = document.createElement("header"); head.className = "site";
   head.innerHTML = `<h1>${md(props.site || host)}</h1>${props.tagline ? `<p class="tagline">${md(props.tagline)}</p>` : ""}${props.by || props.date ? `<p class="byline">${[props.by, props.date].filter(Boolean).map(md).join(" · ")}</p>` : ""}`;
   root.appendChild(head);
+  // posts: newest first in the index; each post is its own section with an anchor. The index goes where a
+  // `posts:` block is, or straight after the header when there are two or more posts and no explicit index.
+  const posts = blocks.map((b, i) => ({ block: b, i })).filter(x => x.block.kind === "post");
+  for (const p of posts) { const nxt = blocks.slice(p.i + 1).find(b => b.kind === "text" || b.kind === "post"); p.summary = nxt && nxt.kind === "text" ? nxt.text.slice(0, 160) + (nxt.text.length > 160 ? "…" : "") : ""; }
+  posts.sort((a, b) => (b.block.opts.date || "").localeCompare(a.block.opts.date || "") || a.i - b.i);
+  const ctx = { posts };
   let section = null; const sec = () => section || (section = root.appendChild(document.createElement("section")));
-  for (const b of blocks) {
+  const autoIndexAt = posts.length >= 2 && !blocks.some(b => b.kind === "posts") ? blocks.findIndex(b => b.kind === "post") : -1;
+  blocks.forEach((b, i) => {
+    if (i === autoIndexAt) { const ix = renderBlock({ kind: "posts" }, ctx); ix.classList.add("reveal"); sec().appendChild(ix); }
     let node;
-    if (b.kind === "heading") { if (b.level === 1) { section = document.createElement("section"); root.appendChild(section); } node = document.createElement(b.level === 1 ? "h2" : "h3"); node.innerHTML = md(b.text); }
-    else if (b.kind === "text") { node = document.createElement("p"); node.innerHTML = md(b.text); }
-    else if (b.kind === "divider") node = document.createElement("hr");
-    else if (b.kind === "image") {
-      node = document.createElement("div"); node.className = "svgimg";
-      try { const r = query(`SELECT body FROM svg WHERE name=${sqlLit(b.type)}`).rows[0]; if (!r) throw new Error(`no svg named "${b.type}"`); node.appendChild(cleanSVG(r.body)); if (b.opts.alt) node.firstChild.setAttribute("aria-label", b.opts.alt); }
-      catch (e) { node.innerHTML = `<p class="note">image: ${esc(e.message)}</p>`; }
-    }
-    else node = renderChart(b);
-    node.classList.add("reveal"); sec().appendChild(node);
-  }
+    if (b.kind === "heading" && b.level === 1) { section = document.createElement("section"); root.appendChild(section); }
+    if (b.kind === "post") {
+      const m = postMeta(b); section = document.createElement("section"); section.className = "post"; section.id = m.id; root.appendChild(section);
+      node = document.createElement("header"); node.innerHTML = `<h2><a href="#${m.id}">${md(m.title)}</a></h2>${m.nice ? `<time datetime="${esc(m.date)}">${esc(m.nice)}</time>` : ""}`;
+    } else node = renderBlock(b, ctx);
+    node.classList.add("reveal"); node.dataset.block = i; sec().appendChild(node);
+  });
   const foot = document.createElement("footer"); foot.className = "site";
   foot.innerHTML = `${props.source ? `<p>Source: ${md(props.source)}</p>` : ""}<p>This site is served from DNS. ${stats.records} TXT records (${(stats.chars / 1024).toFixed(1)} KB of text) unpack to ${(stats.bytes / 1024).toFixed(0)} KB, rendered in your browser${db ? " with SQLite" : ""}. Read it yourself: <code>dig TXT _dnsite.${esc(host)}</code></p>`;
   root.appendChild(foot);
@@ -437,7 +532,8 @@ function fail(msg) {
 
 /* the same code powers the builder page (make.html): it sets data-noboot and drives this API */
 window.DNSite = {
-  parseSite, render, cleanSVG, resolveTXT, loadBlob, parseManifest, ensureMap,
+  parseSite, serializeSite, render, renderBlock, cleanSVG, resolveTXT, loadBlob, parseManifest, ensureMap, embedFor, sha256hex,
+  blockKinds: () => ["heading", "text", "post", "posts", ...OPT_BLOCKS.filter(k => k !== "post"), "divider"],
   chartTypes: () => Object.keys(charts),
   async setDatabase(bytes) { const SQL = await ensureSQL(); if (db) db.close(); db = bytes ? new SQL.Database(bytes) : null; return db; },
   async newDatabase() { const SQL = await ensureSQL(); return new SQL.Database(); },

@@ -82,3 +82,36 @@ footer.site code{font-family:var(--mono);background:var(--card);border:1px solid
 .reveal{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
 .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion: reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+/* posts (blog) */
+section.post{margin-top:3.5rem}
+section.post header h2{margin:0 0 .2rem}
+section.post header h2 a{color:inherit;text-decoration:none}
+section.post header h2 a:hover{text-decoration:underline}
+section.post header time,.posts time{display:block;font:13px/1.5 var(--sans);color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+section.post header{margin-bottom:1rem}
+ol.posts{list-style:none;padding:0;margin:0 0 2rem}
+ol.posts li{padding:.9rem 0;border-bottom:1px solid var(--rule)}
+ol.posts li a{font-size:1.25rem;font-weight:600;text-decoration:none}
+ol.posts li a:hover{text-decoration:underline}
+ol.posts li p{margin:.25rem 0 0;color:var(--muted);font-size:.95rem}
+/* images, inline or from anywhere */
+figure.img{margin:1.6rem 0;padding:0;background:none;border:0;border-radius:0;font-family:var(--sans)}
+figure.img img,figure.img svg{display:block;max-width:100%;height:auto;border-radius:6px}
+figure.img.align-center{margin-left:auto;margin-right:auto}
+figure.img.align-full{width:100%!important}
+figure.img.align-left{float:left;max-width:50%;margin:.3rem 1.4rem .8rem 0}
+figure.img.align-right{float:right;max-width:50%;margin:.3rem 0 .8rem 1.4rem}
+figure.img figcaption{font-weight:400;font-size:.85rem;color:var(--muted);margin:.5rem 0 0;line-height:1.4}
+section::after{content:"";display:block;clear:both}
+/* embeds */
+figure.embed{padding:0;border:0;background:none;border-radius:0}
+figure.embed iframe{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:var(--rule)}
+figure.embed.square iframe{aspect-ratio:1}
+figure.embed.tall iframe{aspect-ratio:9/16;max-width:360px;margin:0 auto}
+figure.embed figcaption{font-weight:400;font-size:.85rem;color:var(--muted);margin:.5rem 0 0}
+/* pull quotes */
+blockquote.pull{margin:2rem 0;padding:0 0 0 1.2rem;border-left:4px solid var(--accent)}
+blockquote.pull p{font-size:1.45rem;line-height:1.35;letter-spacing:-.01em;margin:0}
+blockquote.pull cite{display:block;margin-top:.6rem;font:13px/1.5 var(--sans);color:var(--muted);font-style:normal}
+@media (max-width:600px){figure.img.align-left,figure.img.align-right{float:none;max-width:100%;margin:1.6rem 0}}

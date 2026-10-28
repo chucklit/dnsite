@@ -1,0 +1,35 @@
+site: Notes from the shop
+tagline: A blog that lives in DNS
+theme: paper
+accent: #c2410c
+by: Chuck
+
+text: Short posts about printing, code, and whatever else turns up. The index below is built from the posts automatically.
+
+post: Capital letters, nudged
+  date: 2026-10-27
+text: Today a client wanted "IT" instead of "It" on a department shield. Eighty percent size, nudged down so it sits centred. Then everything that uses it: mousepads, notepads, PowerPoint backgrounds, six 3D renders.
+image: shield
+  alt: A shield with the letters IT
+  width: 160px
+  align: right
+  caption: A stand-in shield, drawn for this example.
+quote: Get the ball onto someone else's side of the court.
+  by: how I try to work
+embed: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+  caption: A reel, for the creatives.
+
+post: Why a website in DNS
+  date: 2026-10-20
+text: Because every resolver on earth is a cache, and nothing expires but the domain. **Bold** claims need *italic* hedges and [a link](https://dnsite.org).
+image: https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png
+  alt: A transparency demonstration
+  width: 50%
+  caption: An image from another host, fetched by your browser.
+image: swatch
+  alt: an orange square
+  width: 64px
+  align: left
+text: And a tiny PNG stored in DNS, floated left.
+divider:
+text: The end.

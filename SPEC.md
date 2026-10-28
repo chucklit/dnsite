@@ -60,6 +60,24 @@ chart: flowmap
   slider: year            # column name; distinct values become the slider stops
 ```
 
+### Blocks
+
+| Block | Form | Options |
+|---|---|---|
+| heading | `# Text`, `## Text`, `### Text` | `#` starts a new section |
+| text | `text: paragraph` | markdown-lite: `**bold**`, `*italic*`, `` `code` ``, `[link](https://…)` |
+| post | `post: Title` | `date: YYYY-MM-DD`. Starts a blog post: its own section with an anchor `#date-title`; everything up to the next post belongs to it |
+| posts | `posts:` | the index of posts, newest first. Without it, an index is placed before the first post when there are two or more |
+| chart | `chart: <type>` | `title`, `query`, `format` (`,` `k` `%` `0.0`), `note`, `slider`, type options; `pick` and `mode` are the builder's column-picker state (ignored by the loader) |
+| number | `number:` | same as chart with type `bignumber` |
+| image | `image: <asset name>` or `image: https://…` | `alt`, `caption`, `width` (`320px`, `60%`), `align` (`center` `full` `left` `right`), `sha256` (URL images: the loader refuses a file that no longer matches) |
+| embed | `embed: <url>` | YouTube, Vimeo, Spotify, SoundCloud, CodePen links only (fixed allowlist, rendered as a sandboxed iframe); `caption`, `ratio` (`wide` `square` `tall`) |
+| quote | `quote: text` | `by` |
+| divider | `divider:` | |
+
+Stored images live in the database table `assets(name TEXT PRIMARY KEY, type TEXT, data BLOB)`:
+SVG (sanitised on render) or WebP/PNG/JPEG bytes. The older `svg(name, body)` table still works.
+
 Rules:
 * `key: value` at column 0 is a top-level property until the first `#` heading.
 * `# Heading` starts a section; `## Subheading` is a smaller heading inside it.
@@ -67,8 +85,7 @@ Rules:
 * `chart: <type>` opens a chart block; the indented `key: value` lines that follow
   belong to it. `query` is SQL run against the site database. `{slider-column}`
   in a query is substituted with the current slider value.
-* `number:` big-number block, `image:` an SVG stored under `svg/<name>` in the
-  database (table `svg(name, body)`), `divider:` a rule.
+* `number:`, `image:`, `embed:`, `quote:`, `post:`, `posts:` and `divider:` as in the table above.
 * Everything is rendered by the loader's built-in components; a site never
   ships its own JavaScript.
 
@@ -79,6 +96,14 @@ Rules:
 and type-specific options (`x`, `y`, `series`, `format`, `from`, `slider`, `color`).
 Column conventions: `label`/`value` for one-dimensional charts, `x`/`y`(+`series`)
 for time series, `iso2`/`value` for maps. Every chart gets a "Show table" toggle.
+
+## Builder
+
+`loader/make.html` edits the same text form through a block list (Blocks tab), a raw text view
+(Text), CSV import into SQLite (Data), stored images (Images: SVG cleaned and sanitised, photos
+re-encoded to WebP in the browser) and Publish (zone file, copy, check against public DNS,
+record-size and host-cap settings). The builder never adds anything to the loader a site
+could not have written by hand.
 
 ## Loader
 
