@@ -246,7 +246,7 @@ const CHART_COLS = {
   choropleth: [["iso2", "Country code (ISO2)"], ["value", "Value"]], flowmap: [["iso2", "Country code (ISO2)"], ["value", "Value"], ["dest", "Name (optional)"]],
 };
 const EXTRA = { flowmap: [["from", "From (ISO2)", "GR"], ["focus", "Focus (europe, americas, or ISO2 list)", ""], ["labels", "Labels", "8"], ["top", "Top N", "30"]], choropleth: [["scale", "Scale (log or linear)", "log"]],
-  histogram: [["bins", "Bins", "20"]], scatter: [["fit", "Fit line (linear or none)", ""]], line: [["annotate", "Annotations (x=2010 | Label; x=2015 | Label)", ""]], area: [["annotate", "Annotations (x=2010 | Label; …)", ""]] };
+  histogram: [["bins", "Bins", "20"]], scatter: [["fit", "Fit line (linear or none)", ""]], line: [["annotate", "Annotations (x=2010 | Label; x=2015 | Label)", ""], ["ymin", "Y axis starts at (number, or data)", "0"]], area: [["annotate", "Annotations (x=2010 | Label; …)", ""], ["ymin", "Y axis starts at (number, or data)", "0"]] };
 const LOG_OK = ["bars", "line", "area", "scatter", "boxplot"];
 const parsePick = s => Object.fromEntries(String(s || "").split(";").map(x => x.trim()).filter(Boolean).map(x => { const i = x.indexOf("="); return [x.slice(0, i).trim(), x.slice(i + 1).trim()]; }));
 const joinPick = o => Object.entries(o).filter(([, v]) => v !== "" && v != null).map(([k, v]) => `${k}=${v}`).join("; ");

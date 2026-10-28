@@ -1,0 +1,68 @@
+site: The website that isn't anywhere
+tagline: DNSite puts a whole site, data and all, into a domain's DNS records. Here is what that makes possible, and how to make one in an afternoon.
+theme: newsroom
+accent: #c00
+by: dnsite.org
+date: October 2026
+source: Sizes measured from the loader's files on 27 October 2026. Record counts from the published zones.
+
+text: Every website you have ever visited lived on a computer somewhere. Someone paid for it, patched it, and will one day stop. DNSite is an experiment in removing that computer. The site is stored in the one piece of infrastructure a domain already has, its DNS records, and assembled in your browser from there. This page is one. Run `dig TXT _dnsite.dnsite.org` and you are reading its source.
+
+# How it works
+
+image: how
+  alt: Diagram: your DNS zone holds TXT records; any resolver caches them; the visitor's browser asks over DNS-over-HTTPS and renders; a static loader page is fetched once
+  caption: The three parts, and the one that never sees your site.
+  align: full
+  figure: how
+
+text: DNS can hold short pieces of text against a name. DNSite writes a site into those pieces: a readable document in a tiny site language, plus an optional SQLite database and vector images, compressed and split across records named `s0`, `s1`, `d0` and so on, with a manifest at `_dnsite` that says how many. Any domain can point at one shared, static **loader** page. When you open the domain, that page asks DNS for the domain's own records and draws what it finds ([@how]).
+quote: Every resolver on earth is a cache, and nothing expires but the domain.
+  by: the whole idea, in one line
+
+number:
+  query: SELECT SUM(records) AS value, 'TXT records hold all four DNSite demo sites, this one included' AS label FROM sites
+  format: ,
+
+chart: table
+  title: The four demo sites and what they weigh in DNS
+  query: SELECT name AS "Site", host AS "Domain", kind AS "Kind", records AS "Records", kb AS "KB", what AS "What is in it" FROM sites
+  figure: sites
+
+# What it is good for
+
+chart: table
+  title: Fits and doesn't
+  query: SELECT kind AS "Site", CASE fits WHEN 1 THEN 'yes' ELSE 'no' END AS "Fits?", why AS "Because" FROM fits
+text: The limits are honest ones. DNS hosts cap a record at a few kilobytes and a zone at a few hundred to a few thousand records, so a site of a few hundred kilobytes is the practical ceiling. Text is nearly free; a photo costs about as much as seven blog posts. And only the domain's owner can change DNS, so a DNSite is read-only for visitors, which is exactly right for the things people publish rather than collect.[^Comments, sign-ups and orders need a server somewhere. That server can be anyone's; the site itself stays in DNS.]
+
+# What it costs to read
+
+text: The loader carries the heavy parts once and your browser caches them for every DNSite you ever visit. A site itself only carries what is unique to it. Everything below the first three rows loads only on sites that need it.
+chart: hbars
+  title: What a first visit downloads, compressed, by part
+  query: SELECT part || '  (' || when_needed || ')' AS label, gz AS value FROM loader ORDER BY gz DESC
+  format: k
+  figure: weight
+  note: A text-only DNSite is about 25 KB in total; a data story about 380 KB, almost all of it the SQLite engine, cached after the first visit.
+
+# A short history of the idea
+
+chart: timeline
+  title: Forty years of putting text in DNS
+  query: SELECT year AS x, event AS label, note FROM history ORDER BY year
+
+# How to make one
+
+text: **1. Write it.** Open [dnsite.org/make](https://dnsite.org/make.html). Add blocks from the list: headings, paragraphs, posts, charts, images, embeds, equations. The preview on the right is the real site.
+text: **2. Add data, if you have any.** Drop a CSV on the Data tab and it becomes a table. Charts pick columns from dropdowns; no SQL required, though it is there if you want it.
+text: **3. Add images.** SVGs go in as they are, cleaned and made safe. Photos are shrunk to WebP in your browser. Big pictures can stay on a host you already have and be linked by URL.
+text: **4. Publish.** Type your domain, download the zone file, and import it at your DNS host, or paste the records. Point the domain at a loader with a CNAME. Press *Check the domain* to watch the records land.
+text: **5. Change it whenever.** Edit, publish again, done. The old version expires out of the world's caches within minutes.
+text: There is nothing to install, no account to make, and no server to keep alive. If dnsite.org itself ever disappears, the loader is [open source](https://github.com/chucklit/dnsite): point your domain at another copy and your site is back.
+
+# The sites, to see for yourself
+
+text: **[Where the Greeks went](https://greeks.dnsite.org)**: thirty years of the Greek diaspora, flow maps and all. **[Pumpkin Patch Notes](https://pumpkins.dnsite.org)**: a blog, in the Field Notes style, with a drawn diagram and three seasons of data. **[Migrant-stock revisions](https://paper.dnsite.org)**: a research note with equations, numbered figures and references. All three are DNS records; all three were made with the builder above.
+divider:
+text: Made in Baltimore with an unreasonable amount of enthusiasm. The code is MIT-licensed at [github.com/chucklit/dnsite](https://github.com/chucklit/dnsite).

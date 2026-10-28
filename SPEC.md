@@ -105,7 +105,7 @@ Rules:
 `flowmap`, `slope`, `waffle`, `timeline`, `histogram` (`value`, `bins`), `boxplot` (`label` group,
 `value`), `heatmap` (`x`, `y`, `value`). Error bars: columns `err` (±) or `lo`/`hi` on bars, line and
 scatter (line draws a band). `yscale: log` on bars, line, area, scatter, boxplot. `fit: linear` on
-scatter adds a least-squares line with r². `annotate: x=2010 | Label; x=2015 | Label` on line and area. Each takes `title`, `query`, `note`,
+scatter adds a least-squares line with r². `annotate: x=2010 | Label; x=2015 | Label` on line and area; `ymin`/`ymax` (a number, or `ymin: data`) on line and area. Each takes `title`, `query`, `note`,
 and type-specific options (`x`, `y`, `series`, `format`, `from`, `slider`, `color`).
 Column conventions: `label`/`value` for one-dimensional charts, `x`/`y`(+`series`)
 for time series, `iso2`/`value` for maps. Every chart gets a "Show table" toggle.

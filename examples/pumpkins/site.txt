@@ -1,0 +1,77 @@
+site: Pumpkin Patch Notes
+tagline: A field notebook on Cucurbita, kept through one fall
+theme: fieldnotes
+accent: #b83a1e
+by: Field notes, No. 1
+date: October 2026
+source: USDA NASS Vegetables 2024 Summary; Starbucks announcements and press reports for PSL dates; Preservation Maryland and Food Republic on McCormick; Nielsen and IRI figures as reported by Good Beer Hunting (2019). Days to maturity are typical seed-catalogue figures.
+
+text: Three entries from one season: what's inside the thing, when it all happens, and why the pumpkin-flavoured world arrives before the pumpkins do.
+
+post: Inside a pumpkin
+  date: 2026-10-24
+text: Cut one in half and you are looking at a **berry**. Botanically a pumpkin is a *pepo*: a fruit with a hard rind and a fleshy interior, in the same family as cucumbers, melons and gourds. Everything you can see has a job.
+image: cross_section
+  alt: A labelled cross-section of a pumpkin showing the stem, rind, flesh, seed cavity, seeds, fibrous strands, ribs and blossom end
+  caption: A pumpkin in section. Drawn, not photographed, so the whole thing is a few kilobytes.
+  width: 100%
+  align: full
+  figure: cut
+text: **Stem (peduncle).** The handle. Its woody base is the pumpkin's weak point; a snapped stem is where rot gets in, which is why growers cut with pruners and leave a few inches.
+text: **Rind.** The skin, hardened by curing in the September sun. Its ridges follow the **ribs**, the vascular lines that fed the fruit as it grew; count them and you usually get a number between eight and fourteen.
+text: **Flesh (mesocarp).** The orange wall, usually an inch or two thick, and the only part a pie wants. Pie varieties grow a thick, dry, sweet wall; carving varieties grow a thin, watery one so the fruit can get big.
+text: **Seed cavity.** The hollow middle, laced with the **fibrous strands** everyone scrapes out at Halloween. Those strands are the placental tissue that fed the seeds.
+text: **Seeds.** A carving pumpkin carries a few hundred, each one a flat, oval, oil-rich package that is also the easiest part to eat.[^Roast them at 350 °F for 15 to 20 minutes with salt and oil. Hulless varieties, bred in Styria for oil, skip the shell entirely.]
+text: **Blossom end.** The scar opposite the stem, where the flower was. If it is soft, the pumpkin was picked wet or stored badly.
+quote: A pumpkin is a berry with ambition.
+  by: a thing I say to customers who ask
+
+post: The harvest, scheduled
+  date: 2026-10-17
+text: Pumpkins are a long crop for a short market. Most of what is grown in the United States is sold in the five weeks before Halloween, and most of what is canned is grown within a day's drive of Morton, Illinois.
+chart: timeline
+  title: One season, start to finish
+  query: SELECT when_ AS x, what AS label, note FROM season ORDER BY step
+chart: hbars
+  title: Days from sowing to harvest, by variety (catalogue figures, longest shown)
+  query: SELECT variety AS label, days_max AS value FROM varieties ORDER BY days_max
+  format: ,
+  figure: days
+  note: Count back from the Saturday you want to sell on and you have your sowing date. Giants need the whole summer and then some.
+chart: table
+  title: Common varieties at a glance
+  query: SELECT variety AS "Variety", kind AS "Kind", days_min || '–' || days_max AS "Days", lb_min || '–' || lb_max AS "Pounds" FROM varieties ORDER BY days_max
+chart: bars
+  title: Where the pumpkins are grown: 2024 production, million pounds
+  query: SELECT state AS label, million_lb AS value FROM production ORDER BY 2 DESC
+  format: ,
+  figure: states
+  note: USDA NASS, 2024. Illinois alone grew about a third of the national 1.44 billion pounds; most of it is the tan Dickinson type that goes into cans, not jack-o'-lanterns.
+number:
+  query: SELECT 1440 AS value, 'million pounds of pumpkins harvested in the United States in 2024, on 68,900 acres (USDA)' AS label
+  format: ,
+text: [@states] is the reason the canning crop and the carving crop are different businesses. Illinois grows for the cannery on contract; everyone else grows for the roadside stand and the grocery display, where the pumpkin is sold by the look of it.
+
+post: Why pumpkin spice comes early and leaves before Halloween
+  date: 2026-10-10
+text: The pumpkins in the field turn orange in late September. The pumpkin-flavoured world does not wait for them. Starbucks' Pumpkin Spice Latte, the bellwether, has crept from a 10 October debut in 2003 to the fourth week of August. Pumpkin beers ship in August so they are fully stocked by September, and by Halloween the shelf has already turned to Oktoberfest and winter ales.
+chart: line
+  title: The day the Pumpkin Spice Latte returned, 2011–2025 (day of the year)
+  query: SELECT year AS x, doy AS y FROM psl WHERE year >= 2011
+  annotate: x=2015 | latest, 4 Sept; x=2024 | earliest, 22 Aug
+  ymin: 225
+  ymax: 255
+  format: ,
+  figure: psl
+  note: Day 244 is 1 September. Sources: Starbucks announcements and press reports, 2011–2025. The first test, in 2003, began on day 283 (10 October).
+chart: table
+  title: PSL return dates
+  query: SELECT year AS "Year", month || '/' || day AS "Date", (304 - doy) AS "Days before Halloween", note AS "Note" FROM psl ORDER BY year
+  figure: psldates
+text: [@psl] shows the creep: about a week earlier over fifteen years, with 2024's 22 August the earliest yet, ten weeks before the night it supposedly celebrates. The logic is retail, not horticulture. A seasonal product earns for as long as it is on the shelf, and the shelf is rented from the previous season. Pumpkin creeps into August; Oktoberfest and holiday beers creep into October; by 31 October the pumpkin beer is already on clearance.
+text: Beer followed the latte. Nielsen counted 53 pumpkin beers on the market in 2012 and 65 the next year; brewers started shipping in August to be fully distributed by September; and the category's grocery-store volume peaked in 2015 at roughly 8,800 barrels before Oktoberfest styles took its place as the top fall seasonal.[^Volume figures are IRI scan data for grocery, convenience and drug stores, as reported by Good Beer Hunting in August 2019. They exclude bars and brewery taprooms.]
+chart: timeline
+  title: A short history of pumpkin flavour
+  query: SELECT year AS x, event AS label, note FROM timeline ORDER BY year
+divider:
+text: **A Maryland footnote.** Pumpkin spice, the blend, is a Baltimore product. McCormick & Company, founded in Baltimore in 1889, put its pumpkin pie spice on grocery shelves in 1934, five years after Libby's canned pumpkin created the demand. Cinnamon, ginger, nutmeg, allspice; no pumpkin. The company still makes it, from Hunt Valley, Maryland, about twenty minutes up the road from this notebook.

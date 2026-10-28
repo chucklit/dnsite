@@ -233,14 +233,16 @@ function drawAnnotations(svg, o, x, top, bottom) {
   parseAnnotations(o).forEach((a, i) => {
     const g = el("g", { class: "annot" }, svg);
     el("line", { x1: x(a.x), x2: x(a.x), y1: top, y2: bottom, stroke: "var(--ink)", "stroke-dasharray": "3 3", opacity: .5 }, g);
-    if (a.text) txt(g, x(a.x) + 4, top + 10 + (i % 3) * 12, a.text, { class: "lbl", fill: "var(--ink)" });
+    if (a.text) { const right = x(a.x) > 480; txt(g, x(a.x) + (right ? -4 : 4), top + 10 + (i % 3) * 12, a.text, { class: "lbl", fill: "var(--ink)", "text-anchor": right ? "end" : "start" }); }
   });
 }
 function xyChart(fig, rows, o, area) {
   const fmt = formatter(o.format), W = 640, H = 300, mL = 50, mR = 14, mT = 14, mB = 34;
   const series = seriesOf(rows), xs = [...new Set(rows.map(r => +r.x))].sort((a, b) => a - b);
   const ys = rows.map(r => +r.y || 0), his = rows.map(r => (errRange(r) || [0, +r.y || 0])[1]);
-  const ymax = Math.max(0, ...ys, ...his) || 1, ymin = o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys);
+  // ymin: a number, or "data" to start the axis at the smallest value (for series that never go near zero)
+  const ymax0 = Math.max(0, ...ys, ...his) || 1, ymax = o.ymax != null && !isNaN(+o.ymax) ? +o.ymax : ymax0;
+  const ymin = o.ymin === "data" ? Math.min(...ys) : o.ymin != null && !isNaN(+o.ymin) ? +o.ymin : o.yscale === "log" ? Math.max(1e-9, Math.min(...ys.filter(v => v > 0))) : Math.min(0, ...ys);
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, fig);
   const x = lin(xs[0], xs[xs.length - 1], mL, W - mR), { y, ticks: tk } = yScale(o, ymin, ymax, H - mB, mT);
   const g = el("g", { class: "grid" }, svg);

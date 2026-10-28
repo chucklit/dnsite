@@ -27,6 +27,10 @@ def load_zone():
 
 
 class Handler(SimpleHTTPRequestHandler):
+    def end_headers(self):  # development: never let the browser cache the loader files
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def log_message(self, fmt, *args):  # quieter: one line per request, no timestamps
         if "/dns-query" not in self.path:
             sys.stderr.write("%s %s\n" % (self.command, self.path))
